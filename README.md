@@ -111,6 +111,24 @@ Relationship setup
 2) Then call `ImpactNFT.setMinter(0xD4fcbA9301d11DF04F5bA3361D5962b15D761705, true)`
 3) Now `ImpactRegistry.verifyImpact(id, aiScore, reward, true)` can mint NFTs to users using the stored `metadataURI`.
 
+### SponsorPool (Celo Sepolia)
+
+- Contract address: `0x2aB068440E8D2006B9bA2f2995932Cb4fC33e21C`
+- Verification: ✅ Sourcify verified — https://repo.sourcify.dev/11142220/0x2aB068440E8D2006B9bA2f2995932Cb4fC33e21C/
+- Creation tx: `0x4febca762fec134f7cdecc4a15ea702e5498ef8d5ec466024caba160b5a6b5c3`
+- Block: `8101624`
+- Owner (after deploy): `0x8b550Ff0BA4F55f070cafA161E44e84AbeDbBc56`
+- Constructor token_: `0xC71835dC515baD2464E62377E82D8391F891b91D`
+
+How to use
+
+1) Fund the pool
+	- token.approve(0x2aB068440E8D2006B9bA2f2995932Cb4fC33e21C, amount)
+	- SponsorPool.contribute(amount)
+2) Distribute (owner-only)
+	- SponsorPool.distribute([addr1, addr2], [70, 30], totalAmount)
+	- Ensure the pool holds at least totalAmount of the token
+
 ## Backend API (local dev)
 
 This repo now includes a lightweight backend for demoing submissions and AI verification.
