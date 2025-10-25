@@ -1,0 +1,30 @@
+specVersion: 0.0.6
+schema:
+  file: ./schema.graphql
+dataSources:
+  - name: ImpactX
+    kind: ethereum
+    network: celo
+    source:
+      address: '0x0000000000000000000000000000000000000000' # placeholder
+      abi: ImpactX
+      startBlock: 0
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - Impact
+        - Attestation
+        - Pool
+      abis:
+        - name: ImpactX
+          file: ./abis/ImpactX.json
+      eventHandlers:
+        - event: ImpactVerified(indexed address,string,uint256,uint256)
+          handler: handleImpactVerified
+        - event: ImpactAttested(indexed address,string,uint256)
+          handler: handleImpactAttested
+        - event: PoolCreated(string,uint256,uint256,uint256)
+          handler: handlePoolCreated
+      file: ./src/mapping.ts

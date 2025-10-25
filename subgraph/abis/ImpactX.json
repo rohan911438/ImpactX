@@ -1,0 +1,37 @@
+{
+  "abi": [
+    {
+      "anonymous": false,
+      "inputs": [
+        { "indexed": true, "internalType": "address", "name": "wallet", "type": "address" },
+        { "indexed": false, "internalType": "string", "name": "impactId", "type": "string" },
+        { "indexed": false, "internalType": "uint256", "name": "aiScore", "type": "uint256" },
+        { "indexed": false, "internalType": "uint256", "name": "timestamp", "type": "uint256" },
+        { "indexed": false, "internalType": "string", "name": "actionType", "type": "string" }
+      ],
+      "name": "ImpactVerified",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        { "indexed": true, "internalType": "address", "name": "wallet", "type": "address" },
+        { "indexed": false, "internalType": "string", "name": "impactId", "type": "string" },
+        { "indexed": false, "internalType": "string", "name": "attestationId", "type": "string" }
+      ],
+      "name": "ImpactAttested",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        { "indexed": false, "internalType": "string", "name": "name", "type": "string" },
+        { "indexed": false, "internalType": "uint256", "name": "startAt", "type": "uint256" },
+        { "indexed": false, "internalType": "uint256", "name": "endAt", "type": "uint256" },
+        { "indexed": false, "internalType": "uint256", "name": "budget", "type": "uint256" }
+      ],
+      "name": "PoolCreated",
+      "type": "event"
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+type Impact @entity {
+  id: ID!
+  wallet: Bytes!
+  actionType: String!
+  aiScore: Int!
+  createdAt: BigInt!
+}
+
+type Attestation @entity {
+  id: ID!
+  wallet: Bytes!
+  impactId: String!
+  createdAt: BigInt!
+  schema: String!
+}
+
+type Pool @entity {
+  id: ID!
+  name: String!
+  startAt: BigInt!
+  endAt: BigInt!
+  budget: BigInt!
+}

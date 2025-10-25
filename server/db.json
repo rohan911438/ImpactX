@@ -1,0 +1,28 @@
+{
+  "impacts": [],
+  "verifications": [],
+  "challenges": [
+    {
+      "id": "ch1",
+      "title": "Plant 3 Trees",
+      "actionType": "Tree Planting",
+      "target": 3,
+      "week": "2025-W43"
+    },
+    {
+      "id": "ch2",
+      "title": "Beach Cleanup Duo",
+      "actionType": "Beach Cleanup",
+      "target": 2,
+      "week": "2025-W43"
+    },
+    {
+      "id": "ch3",
+      "title": "Teach & Inspire",
+      "actionType": "Teaching",
+      "target": 1,
+      "week": "2025-W43"
+    }
+  ],
+  "referrals": []
+}
