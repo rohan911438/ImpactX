@@ -2,6 +2,7 @@
 pragma solidity ^0.8.20;
 
 import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v4.9.5/contracts/access/Ownable.sol";
+import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v4.9.5/contracts/security/ReentrancyGuard.sol";
 
 /// @dev Minimal interface for the NFT contract to mint tokens.
 interface IImpactNFT {
@@ -11,7 +12,7 @@ interface IImpactNFT {
 /// @title ImpactRegistry
 /// @notice On-chain registry of verified impacts. Optionally mints an NFT upon verification.
 /// @dev Owner represents the trusted verifier/orchestrator in the current MVP.
-contract ImpactRegistry is Ownable {
+contract ImpactRegistry is Ownable, ReentrancyGuard {
     struct Impact {
         address user;
         string actionType;     // e.g., "Tree Planting"
@@ -58,10 +59,11 @@ contract ImpactRegistry is Ownable {
     /// @param aiScore AI score (0-100)
     /// @param reward Arbitrary reward number (token amount or off-chain reference)
     /// @param mintNFT If true and NFT contract set, mints NFT using metadataURI
-    function verifyImpact(uint256 id, uint16 aiScore, uint256 reward, bool mintNFT) external onlyOwner {
+    function verifyImpact(uint256 id, uint16 aiScore, uint256 reward, bool mintNFT) external onlyOwner nonReentrant {
         Impact storage imp = impacts[id];
         require(imp.timestamp != 0, "impact not found");
         require(!imp.verified, "already verified");
+        require(aiScore <= 100, "aiScore>100");
 
         imp.aiScore = aiScore;
         imp.reward = reward;

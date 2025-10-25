@@ -2,13 +2,14 @@
 pragma solidity ^0.8.20;
 
 import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v4.9.5/contracts/access/Ownable.sol";
+import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v4.9.5/contracts/security/ReentrancyGuard.sol";
 import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v4.9.5/contracts/token/ERC20/IERC20.sol";
 import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v4.9.5/contracts/token/ERC20/utils/SafeERC20.sol";
 
 /// @title SponsorPool
 /// @notice Simple pool for collecting ERC20 contributions and distributing to recipients by weights.
 /// @dev Owner triggers distribution; uses SafeERC20 for transfers.
-contract SponsorPool is Ownable {
+contract SponsorPool is Ownable, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     IERC20 public immutable token; // e.g., cUSD on Celo
@@ -25,7 +26,7 @@ contract SponsorPool is Ownable {
     }
 
     /// @notice Contribute `amount` tokens to the pool (requires prior approval).
-    function contribute(uint256 amount) external {
+    function contribute(uint256 amount) external nonReentrant {
         require(amount > 0, "amount=0");
         token.safeTransferFrom(msg.sender, address(this), amount);
         contributions[msg.sender] += amount;
@@ -35,7 +36,7 @@ contract SponsorPool is Ownable {
 
     /// @notice Distribute `totalAmount` tokens to `recipients` according to `weights`.
     /// @dev Rounding dust stays in contract for future rounds.
-    function distribute(address[] calldata recipients, uint256[] calldata weights, uint256 totalAmount) external onlyOwner {
+    function distribute(address[] calldata recipients, uint256[] calldata weights, uint256 totalAmount) external onlyOwner nonReentrant {
         require(recipients.length == weights.length, "len mismatch");
         require(recipients.length > 0, "empty");
         require(totalAmount > 0, "amount=0");
@@ -48,6 +49,7 @@ contract SponsorPool is Ownable {
         require(sumWeights > 0, "sumWeights=0");
 
         for (uint256 i = 0; i < recipients.length; i++) {
+            require(recipients[i] != address(0), "zero recipient");
             uint256 share = (totalAmount * weights[i]) / sumWeights;
             if (share > 0) {
                 token.safeTransfer(recipients[i], share);
@@ -58,7 +60,7 @@ contract SponsorPool is Ownable {
     }
 
     /// @notice Owner can withdraw leftover tokens (e.g., dust or emergency stop).
-    function withdraw(address to, uint256 amount) external onlyOwner {
+    function withdraw(address to, uint256 amount) external onlyOwner nonReentrant {
         require(to != address(0), "zero to");
         token.safeTransfer(to, amount);
         emit Withdrawn(to, amount);
