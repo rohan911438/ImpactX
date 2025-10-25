@@ -30,7 +30,7 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen md:pl-64">
       <WalletConnect />
       <Hero onConnectWallet={handleConnectWallet} />
       <Partners />

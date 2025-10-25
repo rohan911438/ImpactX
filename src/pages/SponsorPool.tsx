@@ -113,7 +113,7 @@ const SponsorPoolPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background md:pl-64">
       <div className="container mx-auto px-4 py-8 space-y-6">
         <div>
           <h1 className="text-3xl font-bold mb-2">SponsorPool</h1>

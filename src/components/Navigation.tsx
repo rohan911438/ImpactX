@@ -1,10 +1,11 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "./ui/button";
-import { Wallet, LogOut } from "lucide-react";
+import { Wallet, LogOut, Menu } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAccount, useDisconnect, useChainId, useSwitchChain, useBalance, useReadContract } from "wagmi";
 import { CELO_ALFAJORES_ID, CELO_MAINNET_ID } from "@/lib/wallet";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
 interface NavigationProps {
   isConnected?: boolean;
@@ -84,145 +85,99 @@ export const Navigation = ({
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
   };
   
-  return (
-    <nav className="border-b border-border bg-card/50 backdrop-blur-lg sticky top-0 z-50">
-      <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-8">
-          <Link to="/" className="flex items-center gap-2 text-2xl font-bold">
-            <span className="gradient-hero bg-clip-text text-transparent">ImpactX</span>
-            <span>🌿</span>
-          </Link>
-          
-          <div className="hidden md:flex items-center gap-6">
-            <Link 
-              to="/dashboard" 
-              className={`text-sm transition-colors hover:text-primary ${
-                isActive("/dashboard") ? "text-primary font-semibold" : "text-muted-foreground"
-              }`}
-            >
-              Dashboard
-            </Link>
-            <Link 
-              to="/challenges" 
-              className={`text-sm transition-colors hover:text-primary ${
-                isActive("/challenges") ? "text-primary font-semibold" : "text-muted-foreground"
-              }`}
-            >
-              Challenges
-            </Link>
-            <Link 
-              to="/leaderboard" 
-              className={`text-sm transition-colors hover:text-primary ${
-                isActive("/leaderboard") ? "text-primary font-semibold" : "text-muted-foreground"
-              }`}
-            >
-              Leaderboard
-            </Link>
-            <Link 
-              to="/metrics" 
-              className={`text-sm transition-colors hover:text-primary ${
-                isActive("/metrics") ? "text-primary font-semibold" : "text-muted-foreground"
-              }`}
-            >
-              Metrics
-            </Link>
-            <Link 
-              to="/nft" 
-              className={`text-sm transition-colors hover:text-primary ${
-                isActive("/nft") ? "text-primary font-semibold" : "text-muted-foreground"
-              }`}
-            >
-              NFT
-            </Link>
-            <Link 
-              to="/registry" 
-              className={`text-sm transition-colors hover:text-primary ${
-                isActive("/registry") ? "text-primary font-semibold" : "text-muted-foreground"
-              }`}
-            >
-              Registry
-            </Link>
-            <Link 
-              to="/pool" 
-              className={`text-sm transition-colors hover:text-primary ${
-                isActive("/pool") ? "text-primary font-semibold" : "text-muted-foreground"
-              }`}
-            >
-              Sponsor Pool
-            </Link>
-            <Link 
-              to="/about" 
-              className={`text-sm transition-colors hover:text-primary ${
-                isActive("/about") ? "text-primary font-semibold" : "text-muted-foreground"
-              }`}
-            >
-              About
-            </Link>
-            <Link 
-              to="/verifier" 
-              className={`text-sm transition-colors hover:text-primary ${
-                isActive("/verifier") ? "text-primary font-semibold" : "text-muted-foreground"
-              }`}
-            >
-              Verifier
-            </Link>
-            {wagmiAccount.address && (
-              <Link
-                to={`/u/${wagmiAccount.address}`}
-                className={`text-sm transition-colors hover:text-primary ${
-                  location.pathname.startsWith(`/u/`) ? "text-primary font-semibold" : "text-muted-foreground"
-                }`}
-              >
-                My Profile
-              </Link>
-            )}
-          </div>
-        </div>
-        
+  const NavLink = ({ to, label }: { to: string; label: string }) => (
+    <Link
+      to={to}
+      className={`flex items-center px-3 py-2 rounded-md text-sm transition-colors hover:bg-muted ${
+        isActive(to) ? "bg-muted text-foreground font-semibold" : "text-muted-foreground"
+      }`}
+    >
+      {label}
+    </Link>
+  );
+
+  const SidebarContent = () => (
+    <div className="h-full flex flex-col">
+      <div className="px-4 py-4 border-b border-border">
+        <Link to="/" className="flex items-center gap-2 text-xl font-bold">
+          <span className="gradient-hero bg-clip-text text-transparent">ImpactX</span>
+          <span>🌿</span>
+        </Link>
+      </div>
+      <div className="flex-1 overflow-y-auto px-2 py-3 space-y-1">
+        <NavLink to="/dashboard" label="Dashboard" />
+        <NavLink to="/challenges" label="Challenges" />
+        <NavLink to="/leaderboard" label="Leaderboard" />
+        <NavLink to="/metrics" label="Metrics" />
+        <NavLink to="/nft" label="NFT" />
+        <NavLink to="/registry" label="Registry" />
+        <NavLink to="/pool" label="Sponsor Pool" />
+        <NavLink to="/about" label="About" />
+        <NavLink to="/verifier" label="Verifier" />
+        {wagmiAccount.address && <NavLink to={`/u/${wagmiAccount.address}`} label="My Profile" />}
+      </div>
+      <div className="border-t border-border p-3 space-y-3">
         {(isConnected || wagmiAccount.isConnected) && (
-          <div className="flex items-center gap-4">
-            <div className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-lg bg-card border border-border">
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-card border border-border">
               <Wallet className="w-4 h-4 text-primary" />
-              <span className="text-sm font-mono">{formatAddress(wagmiAccount.address || walletAddress)}</span>
-              <span className="text-xs text-muted-foreground">|</span>
-              <span className="text-sm font-semibold text-accent">
-                {nativeBal ? `${Number(nativeBal.formatted).toFixed(3)} ${nativeBal.symbol}` : "--"}
-              </span>
-              {cusdFormatted && (
-                <>
-                  <span className="text-xs text-muted-foreground">|</span>
-                  <span className="text-sm font-semibold text-accent">{cusdFormatted} cUSD</span>
-                </>
-              )}
+              <span className="text-xs font-mono">{formatAddress(wagmiAccount.address || walletAddress)}</span>
             </div>
-            <Select
-              value={String(chainId || CELO_MAINNET_ID)}
-              onValueChange={(val) => {
-                const target = Number(val);
-                const targetChain = chains.find((c) => c.id === target);
-                if (targetChain) switchChain({ chainId: targetChain.id });
-              }}
-            >
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Select Network" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={String(CELO_MAINNET_ID)}>Celo Mainnet</SelectItem>
-                <SelectItem value={String(CELO_ALFAJORES_ID)}>Celo Alfajores</SelectItem>
-              </SelectContent>
-            </Select>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={handleLogout}
-              className="gap-2"
-            >
-              <LogOut className="w-4 h-4" />
-              <span className="hidden sm:inline">Logout</span>
+            <div className="flex items-center gap-2">
+              <Select
+                value={String(chainId || CELO_MAINNET_ID)}
+                onValueChange={(val) => {
+                  const target = Number(val);
+                  const targetChain = chains.find((c) => c.id === target);
+                  if (targetChain) switchChain({ chainId: targetChain.id });
+                }}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select Network" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={String(CELO_MAINNET_ID)}>Celo Mainnet</SelectItem>
+                  <SelectItem value={String(CELO_ALFAJORES_ID)}>Celo Alfajores</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <span>{nativeBal ? `${Number(nativeBal.formatted).toFixed(3)} ${nativeBal.symbol}` : "--"}</span>
+              {cusdFormatted && <span>{cusdFormatted} cUSD</span>}
+            </div>
+            <Button variant="outline" size="sm" onClick={handleLogout} className="w-full gap-2">
+              <LogOut className="w-4 h-4" /> Logout
             </Button>
           </div>
         )}
       </div>
-    </nav>
+    </div>
+  );
+
+  return (
+    <>
+      {/* Mobile top bar with menu */}
+      <div className="md:hidden border-b border-border bg-card/50 backdrop-blur-lg sticky top-0 z-50">
+        <div className="px-4 py-3 flex items-center justify-between">
+          <Link to="/" className="flex items-center gap-2 text-xl font-bold">
+            <span className="gradient-hero bg-clip-text text-transparent">ImpactX</span>
+            <span>🌿</span>
+          </Link>
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button variant="outline" size="icon"><Menu className="w-5 h-5" /></Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="p-0 w-72">
+              <SidebarContent />
+            </SheetContent>
+          </Sheet>
+        </div>
+      </div>
+
+      {/* Desktop fixed sidebar */}
+      <aside className="hidden md:flex fixed left-0 top-0 h-screen w-64 border-r border-border bg-card z-40">
+        <SidebarContent />
+      </aside>
+    </>
   );
 };
