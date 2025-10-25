@@ -17,7 +17,10 @@ Recorded deployments for quick reference.
    - Tx Hash: `0x90b6c8b16c0ca55be162c858f0a16fb99076ead43e7c1e2129a82732dbe8c57b`
    - Block: `8095068`
    - Deployer: `0x8b550Ff0BA4F55f070cafA161E44e84AbeDbBc56`
-   - Verification: Sourcify pending (ensure compiler 0.8.20 and matching optimization settings)
+   - Verification: ✅ Verified on CeloScan
+   - Compiler: `v0.8.30` (Optimization: `false`, Runs: `200`)
+   - Constructor Args: `name = "Impact NFT"`, `symbol = "IMPACT"`
+   - Notes: The Solidity source includes `// SPDX-License-Identifier: MIT`.
 
 ## Recommended network tokens
 - Celo Mainnet cUSD: `0x765DE816845861e75A25fCA122bb6898B8B1282a`
@@ -28,7 +31,7 @@ Recorded deployments for quick reference.
 2. Create a new workspace or use "Default".
 3. Add a `contracts/` folder and drag-drop the three `.sol` files from this repo (or copy-paste their contents).
 4. In the Solidity compiler tab:
-   - Select compiler version `0.8.20`.
+   - Select compiler version `0.8.30` (matches the verified deployment).
    - Enable auto-compile if you prefer.
    - Compile each contract.
 5. In the Deploy & Run tab:

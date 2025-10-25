@@ -60,6 +60,40 @@ This project is built with:
 - shadcn-ui
 - Tailwind CSS
 
+## On-chain deployment proof (Celo Sepolia)
+
+This project includes an ERC-721 contract deployed and verified for hackathon review.
+
+- Contract name: ImpactNFT
+- Network: Celo Sepolia Testnet
+- Contract address: `0x179B30bA56985D1e358a1d22BCfC1d1d0595De45`
+- Verification: ✅ Verified on CeloScan
+
+Deployment metadata
+
+- Transaction (creation): `0x90b6c8b16c0ca55be162c858f0a16fb99076ead43e7c1e2129a82732dbe8c57b`
+- Block: `8095068`
+- Deployer (and initial owner): `0x8b550Ff0BA4F55f070cafA161E44e84AbeDbBc56`
+- First event: `OwnershipTransferred` emitted to the deployer address
+- Constructor args: `name = "Impact NFT"`, `symbol = "IMPACT"`
+- Compiler: `v0.8.30` (Optimization: `false`, Runs: `200`)
+- License: `MIT` (SPDX present in the source)
+
+Files and source
+
+- Source file: `contracts/ImpactNFT.sol`
+- Standard library: OpenZeppelin 4.9.5 (via GitHub imports)
+- Related contracts: `contracts/ImpactRegistry.sol`, `contracts/SponsorPool.sol`
+
+Useful checks (optional)
+
+- Read-only calls you can try from any ABI console:
+	- `name()` => `Impact NFT`
+	- `symbol()` => `IMPACT`
+	- `owner()` => `0x8b550Ff0BA4F55f070cafA161E44e84AbeDbBc56`
+
+If you need direct explorer links, open CeloScan and paste the address and tx hash above (select the Celo Sepolia network).
+
 ## Backend API (local dev)
 
 This repo now includes a lightweight backend for demoing submissions and AI verification.
