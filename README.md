@@ -1,185 +1,151 @@
-# Welcome to your Lovable project
+# ImpactX — Proof-of-Impact on Celo (Hackathon Submission)
 
-## Project info
+Team: BROTHERHOOD · Author: Rohan Kumar
 
-**URL**: https://lovable.dev/projects/c7813489-be1c-4ea5-9662-7c958ca0f1cb
+ImpactX lets people submit real-world actions (photos/videos + context), get AI-verified, and receive on-chain Proof‑of‑Impact (PoI) NFTs and token rewards. This repo includes a working React app, a lightweight backend, and three smart contracts deployed on Celo Sepolia.
 
-## How can I edit this code?
+Quick links for judges
 
-There are several ways of editing your application.
+- Deployer wallet (Celo Sepolia): [0x8b550Ff0BA4F55f070cafA161E44e84AbeDbBc56](https://sepolia.celoscan.io/address/0x8b550ff0ba4f55f070cafa161e44e84abedbbc56)
+- ImpactNFT: [0x179B30bA56985D1e358a1d22BCfC1d1d0595De45](https://sepolia.celoscan.io/address/0x179B30bA56985D1e358a1d22BCfC1d1d0595De45) — Verified on CeloScan
+- ImpactRegistry: [0xD4fcbA9301d11DF04F5bA3361D5962b15D761705](https://sepolia.celoscan.io/address/0xD4fcbA9301d11DF04F5bA3361D5962b15D761705) — Sourcify verified
+- SponsorPool: [0x2aB068440E8D2006B9bA2f2995932Cb4fC33e21C](https://sepolia.celoscan.io/address/0x2aB068440E8D2006B9bA2f2995932Cb4fC33e21C) — Sourcify verified
 
-**Use Lovable**
+All three addresses are on Celo Sepolia Testnet (chainId 11142220).
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/c7813489-be1c-4ea5-9662-7c958ca0f1cb) and start prompting.
+## Contracts and proofs
 
-Changes made via Lovable will be committed automatically to this repo.
+ImpactNFT (ERC‑721)
 
-**Use your preferred IDE**
+- Address: [0x179B30bA56985D1e358a1d22BCfC1d1d0595De45](https://sepolia.celoscan.io/address/0x179B30bA56985D1e358a1d22BCfC1d1d0595De45)
+- Status: ✅ Verified on CeloScan
+- Creation tx: [0x90b6…c57b](https://sepolia.celoscan.io/tx/0x90b6c8b16c0ca55be162c858f0a16fb99076ead43e7c1e2129a82732dbe8c57b) (block 8095068)
+- Owner: 0x8b550Ff0BA4F55f070cafA161E44e84AbeDbBc56
+- Constructor: name = "Impact NFT", symbol = "IMPACT"
+- Compiler: v0.8.30 (optimizer OFF, runs 200)
+- Source: contracts/ImpactNFT.sol (SPDX: MIT; OZ 4.9.5)
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+ImpactRegistry
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+- Address: [0xD4fcbA9301d11DF04F5bA3361D5962b15D761705](https://sepolia.celoscan.io/address/0xD4fcbA9301d11DF04F5bA3361D5962b15D761705)
+- Status: ✅ Sourcify verified — https://repo.sourcify.dev/11142220/0xD4fcbA9301d11DF04F5bA3361D5962b15D761705/
+- Creation tx: [0x3019…abed](https://sepolia.celoscan.io/tx/0x3019ea4c8965521c9ba7d736732032b1b5b1c0029a11f3eeb293b407d250abed) (block 8100868)
+- Owner: 0x8b550Ff0BA4F55f070cafA161E44e84AbeDbBc56
+- Relationship: setNFTContract(ImpactNFT), then ImpactNFT.setMinter(ImpactRegistry, true)
+- Compiler: v0.8.30 (optimizer OFF, runs 200)
+- Source: contracts/ImpactRegistry.sol (SPDX: MIT; uses ReentrancyGuard)
 
-Follow these steps:
+SponsorPool
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+- Address: [0x2aB068440E8D2006B9bA2f2995932Cb4fC33e21C](https://sepolia.celoscan.io/address/0x2aB068440E8D2006B9bA2f2995932Cb4fC33e21C)
+- Status: ✅ Sourcify verified — https://repo.sourcify.dev/11142220/0x2aB068440E8D2006B9bA2f2995932Cb4fC33e21C/
+- Creation tx: [0x4feb…b5c3](https://sepolia.celoscan.io/tx/0x4febca762fec134f7cdecc4a15ea702e5498ef8d5ec466024caba160b5a6b5c3) (block 8101624)
+- Owner: 0x8b550Ff0BA4F55f070cafA161E44e84AbeDbBc56
+- Constructor token_: 0xC71835dC515baD2464E62377E82D8391F891b91D (ERC‑20 used for this pool)
+- Compiler: v0.8.30 (optimizer OFF, runs 200)
+- Source: contracts/SponsorPool.sol (SPDX: MIT; SafeERC20 + ReentrancyGuard)
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+Optional Test Token
 
-# Step 3: Install the necessary dependencies.
-npm i
+- contracts/MockERC20.sol is included for quick test deployments if needed.
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
+## Deployer wallet proof
 
-**Edit a file directly in GitHub**
+Wallet: [0x8b550Ff0BA4F55f070cafA161E44e84AbeDbBc56](https://sepolia.celoscan.io/address/0x8b550ff0ba4f55f070cafa161e44e84abedbbc56) (Celo Sepolia)
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+Notable recent transactions (Celo Sepolia)
 
-**Use GitHub Codespaces**
+- 0x90b6…c57b — Contract creation: ImpactNFT (block 8095068)
+- 0x3019…abed — Contract creation: ImpactRegistry (block 8100868)
+- 0x4feb…b5c3 — Contract creation: SponsorPool (block 8101624)
+- 0x139a…ba29, 0xf71d…8a67, 0xb19b…c433 — Incoming 3 CELO funding txs from 0x127C22b9…5469065f8 (earlier)
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+View full history: CeloScan wallet page linked above.
 
-## What technologies are used for this project?
+## Submission metadata
 
-This project is built with:
+- Team: BROTHERHOOD
+- Author: Rohan Kumar
+- Network: Celo Sepolia (chainId 11142220)
+- Language/Stack: Solidity 0.8.30 (OZ 4.9.5), React + Vite + TypeScript, Express (mock API)
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+## How to reproduce (Remix)
 
-## On-chain deployment proof (Celo Sepolia)
+Compiler settings used for verification
 
-This project includes an ERC-721 contract deployed and verified for hackathon review.
+- Solidity: v0.8.30
+- Optimization: OFF
+- Runs: 200
 
-- Contract name: ImpactNFT
-- Network: Celo Sepolia Testnet
-- Contract address: `0x179B30bA56985D1e358a1d22BCfC1d1d0595De45`
-- Verification: ✅ Verified on CeloScan
+Deploy order
 
-Deployment metadata
+1) Deploy ImpactNFT(name = "Impact NFT", symbol = "IMPACT")
+2) Deploy ImpactRegistry()
+3) Call ImpactRegistry.setNFTContract(<ImpactNFT>)
+4) Call ImpactNFT.setMinter(<ImpactRegistry>, true)
+5) Deploy SponsorPool(token_ = <ERC‑20 address, e.g. MockERC20>)
 
-- Transaction (creation): `0x90b6c8b16c0ca55be162c858f0a16fb99076ead43e7c1e2129a82732dbe8c57b`
-- Block: `8095068`
-- Deployer (and initial owner): `0x8b550Ff0BA4F55f070cafA161E44e84AbeDbBc56`
-- First event: `OwnershipTransferred` emitted to the deployer address
-- Constructor args: `name = "Impact NFT"`, `symbol = "IMPACT"`
-- Compiler: `v0.8.30` (Optimization: `false`, Runs: `200`)
-- License: `MIT` (SPDX present in the source)
+SponsorPool usage
 
-Files and source
+1) token.approve(<SponsorPool>, amount)
+2) SponsorPool.contribute(amount)
+3) SponsorPool.distribute([addr1, addr2], [70, 30], totalAmount) — owner only
 
-- Source file: `contracts/ImpactNFT.sol`
-- Standard library: OpenZeppelin 4.9.5 (via GitHub imports)
-- Related contracts: `contracts/ImpactRegistry.sol`, `contracts/SponsorPool.sol`
+## Run locally (frontend + API)
 
-Useful checks (optional)
+Requirements: Node.js 18+
 
-- Read-only calls you can try from any ABI console:
-	- `name()` => `Impact NFT`
-	- `symbol()` => `IMPACT`
-	- `owner()` => `0x8b550Ff0BA4F55f070cafA161E44e84AbeDbBc56`
-
-If you need direct explorer links, open CeloScan and paste the address and tx hash above (select the Celo Sepolia network).
-
-### Additional deployed contract
-
-- Contract name: ImpactRegistry
-- Network: Celo Sepolia Testnet
-- Contract address: `0xD4fcbA9301d11DF04F5bA3361D5962b15D761705`
-- Verification: ✅ Sourcify verified — https://repo.sourcify.dev/11142220/0xD4fcbA9301d11DF04F5bA3361D5962b15D761705/
-- Transaction (creation): `0x3019ea4c8965521c9ba7d736732032b1b5b1c0029a11f3eeb293b407d250abed`
-- Block: `8100868`
-- Owner (after deploy): `0x8b550Ff0BA4F55f070cafA161E44e84AbeDbBc56`
-- Emits `OwnershipTransferred` on creation
-
-Relationship setup
-
-1) Call `ImpactRegistry.setNFTContract(0x179B30bA56985D1e358a1d22BCfC1d1d0595De45)`
-2) Then call `ImpactNFT.setMinter(0xD4fcbA9301d11DF04F5bA3361D5962b15D761705, true)`
-3) Now `ImpactRegistry.verifyImpact(id, aiScore, reward, true)` can mint NFTs to users using the stored `metadataURI`.
-
-### SponsorPool (Celo Sepolia)
-
-- Contract address: `0x2aB068440E8D2006B9bA2f2995932Cb4fC33e21C`
-- Verification: ✅ Sourcify verified — https://repo.sourcify.dev/11142220/0x2aB068440E8D2006B9bA2f2995932Cb4fC33e21C/
-- Creation tx: `0x4febca762fec134f7cdecc4a15ea702e5498ef8d5ec466024caba160b5a6b5c3`
-- Block: `8101624`
-- Owner (after deploy): `0x8b550Ff0BA4F55f070cafA161E44e84AbeDbBc56`
-- Constructor token_: `0xC71835dC515baD2464E62377E82D8391F891b91D`
-
-How to use
-
-1) Fund the pool
-	- token.approve(0x2aB068440E8D2006B9bA2f2995932Cb4fC33e21C, amount)
-	- SponsorPool.contribute(amount)
-2) Distribute (owner-only)
-	- SponsorPool.distribute([addr1, addr2], [70, 30], totalAmount)
-	- Ensure the pool holds at least totalAmount of the token
-
-## Backend API (local dev)
-
-This repo now includes a lightweight backend for demoing submissions and AI verification.
-
-- Server: Express + lowdb (JSON) persistence
-- Uploads: Stored locally in `uploads/` and served from `/uploads`
-- Port: 8787
-
-Key endpoints:
-
-- GET `/api/health` – health check
-- GET `/api/impacts?walletAddress=0x...` – list impacts for a wallet
-- POST `/api/impacts` – submit an impact (multipart)
-	- fields: `walletAddress`, `actionType`, `description`
-	- file: `photo`
-	- simulates AI verification and updates the record after ~2s
-- GET `/api/verifications` – recent verification requests
-- GET `/api/leaderboard` – aggregate leaderboard
-
-## Local development workflow
-
-Frontend runs on Vite (port 8080). API runs on 8787. A dev proxy is configured so the frontend can call `/api/*` directly.
-
-Run servers:
+Install & run
 
 ```cmd
-npm run dev:server   # start API at http://localhost:8787
-npm run dev          # start Vite at http://localhost:8080
-# or run both in one terminal
-npm run dev:all
+npm i
+npm run dev:all      # Runs API (http://localhost:8787) and Frontend (http://localhost:8080)
+
+# Or run separately if you prefer:
+npm run dev:server   # API on http://localhost:8787
+npm run dev          # Frontend on http://localhost:8080
 ```
 
-Wallet integration:
+Wallet integration
 
-- MetaMask connect via `wagmi` (Celo Mainnet/Alfajores)
-- Optional WalletConnect for mobile (Valora): set `VITE_WALLETCONNECT_PROJECT_ID` in `.env`
+- MetaMask via wagmi (Celo Mainnet/Alfajores; Sepolia-compatible for testing)
+- Optional WalletConnect (Valora): set VITE_WALLETCONNECT_PROJECT_ID in .env
 
 ```cmd
 echo VITE_WALLETCONNECT_PROJECT_ID=your_project_id_here> .env
 ```
 
-Then restart `npm run dev`. The WalletConnect button appears in the top-right.
+## Architecture
 
-## How can I deploy this project?
+- Frontend: Vite + React + TypeScript, Tailwind + shadcn‑ui, wagmi/viem
+- Backend: Express + multer + lowdb (JSON) — mock verification + leaderboard/profile endpoints
+- Contracts: ImpactNFT (ERC‑721), ImpactRegistry (verifier + optional mint), SponsorPool (ERC‑20 pool)
+- Subgraph scaffold: /subgraph (for future indexing)
 
-Simply open [Lovable](https://lovable.dev/projects/c7813489-be1c-4ea5-9662-7c958ca0f1cb) and click on Share -> Publish.
+## API routes (MVP)
 
-## Can I connect a custom domain to my Lovable project?
+- GET /api/leaderboard — public leaderboard data
+- GET /api/verifications — list of verification requests
+- GET /api/public/metrics — aggregate metrics for the Metrics page
 
-Yes, you can!
+## Security and notes
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+- Contracts use OpenZeppelin 4.9.5. Registry/Pool guarded with ReentrancyGuard; Pool validates non‑zero recipients.
+- ImpactNFT uses ERC721URIStorage for per‑token metadata; URIs are mutable by design for MVP (documented trade‑off).
+- This is an MVP; before mainnet, consider role-based access (AccessControl), pausability, limits, and audits.
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+## Judging checklist
+
+- Contracts deployed on Celo Sepolia with verifiable addresses and creation txs
+- ImpactNFT verified on CeloScan; Registry/Pool verified via Sourcify
+- Repo includes runnable frontend and mock backend with real UI flows
+- Clear README with links, steps, and security considerations
+
+## Files to review (source of truth)
+
+- contracts/ImpactNFT.sol
+- contracts/ImpactRegistry.sol
+- contracts/SponsorPool.sol
+- contracts/MockERC20.sol (optional test token)
+
+If you need any additional artifacts (flattened sources, ABIs), we can attach them or point to the verified explorer pages.
