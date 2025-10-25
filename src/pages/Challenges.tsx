@@ -15,9 +15,11 @@ const Challenges = () => {
   useEffect(() => {
     const load = async () => {
       try {
+        const demoWallet = "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb";
+        const targetWallet = address || demoWallet;
         const [c, i]: [{ challenges?: Challenge[] }, { impacts?: ApiImpact[] }] = await Promise.all([
           fetch('/api/challenges').then(r => r.json()),
-          address ? fetch(`/api/impacts?walletAddress=${address}`).then(r => r.json()) : Promise.resolve({ impacts: [] })
+          fetch(`/api/impacts?walletAddress=${targetWallet}`).then(r => r.json()),
         ]);
         setChallenges(c.challenges || []);
         setImpacts(i.impacts || []);

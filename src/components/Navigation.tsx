@@ -127,6 +127,30 @@ export const Navigation = ({
               Metrics
             </Link>
             <Link 
+              to="/nft" 
+              className={`text-sm transition-colors hover:text-primary ${
+                isActive("/nft") ? "text-primary font-semibold" : "text-muted-foreground"
+              }`}
+            >
+              NFT
+            </Link>
+            <Link 
+              to="/registry" 
+              className={`text-sm transition-colors hover:text-primary ${
+                isActive("/registry") ? "text-primary font-semibold" : "text-muted-foreground"
+              }`}
+            >
+              Registry
+            </Link>
+            <Link 
+              to="/pool" 
+              className={`text-sm transition-colors hover:text-primary ${
+                isActive("/pool") ? "text-primary font-semibold" : "text-muted-foreground"
+              }`}
+            >
+              Sponsor Pool
+            </Link>
+            <Link 
               to="/about" 
               className={`text-sm transition-colors hover:text-primary ${
                 isActive("/about") ? "text-primary font-semibold" : "text-muted-foreground"

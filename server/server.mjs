@@ -38,11 +38,12 @@ await db.write();
 
 // --- Demo seeding utilities ---
 const demoWallets = [
+  // Primary demo wallet used by Dashboard fallback and Leaderboard current user
+  '0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb',
   '0x12A3456789aBCdEf0123456789abCDef01234567',
   '0x89bCDEF0123456789abCDef0123456789AbcDef0',
   '0xFEdCBA9876543210fEdcBa9876543210FEDcBa98',
   '0x00112233445566778899AaBbCcDdeEfF00112233',
-  '0x77aa88BB99cc00DDEe11223344556677889900aa',
 ];
 
 const demoActions = [
