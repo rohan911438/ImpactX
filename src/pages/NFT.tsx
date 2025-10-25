@@ -1,15 +1,20 @@
-import { useAccount, useChainId, useReadContract, useWriteContract } from "wagmi";
+import { useAccount, useChainId, useReadContract, useWriteContract, useSwitchChain } from "wagmi";
 import { impactNftAbi } from "@/contracts/impactNft.abi";
 import { CONTRACTS } from "@/contracts/addresses";
 import { CELO_SEPOLIA_ID } from "@/lib/wallet";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/components/ui/use-toast";
 
 const NFTPage = () => {
   const { address } = useAccount();
   const chainId = useChainId();
+  const { switchChain } = useSwitchChain();
   const { toast } = useToast();
   const [minting, setMinting] = useState(false);
   const [name, setName] = useState("ImpactX PoI");
@@ -106,40 +111,128 @@ const NFTPage = () => {
     }
   };
 
+  const role = (() => {
+    const me = (address || '').toLowerCase();
+    if (!me) return 'viewer';
+    if (String(owner || '').toLowerCase() === me) return 'owner';
+    if (isMinter) return 'minter';
+    return 'viewer';
+  })();
+
+  const short = (a?: string) => (a ? `${a.slice(0,6)}...${a.slice(-4)}` : '—');
+  const copy = async (text: string) => {
+    try { await navigator.clipboard.writeText(text); toast({ title: 'Copied', description: 'Address copied to clipboard' }); } catch {}
+  };
+  const fillSample = () => {
+    setName('ImpactX PoI');
+    setDescription('Proof-of-Impact NFT minted via ImpactX');
+    setImage(`https://picsum.photos/seed/impact-${Math.floor(Math.random()*1000)}/640/360`);
+  };
+  const clearForm = () => { setName(''); setDescription(''); setImage(''); };
+
   return (
     <div className="min-h-screen bg-background md:pl-64">
-      <div className="container mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold mb-2">ImpactNFT</h1>
-        <p className="text-muted-foreground mb-6">{String(nftName)} ({String(nftSymbol)})</p>
+      <div className="container mx-auto px-4 py-8 space-y-6">
+        <Card className="glass-effect">
+          <CardHeader className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+            <div>
+              <CardTitle className="text-2xl">ImpactNFT</CardTitle>
+              <CardDescription>
+                {nftName ? String(nftName) : <Skeleton className="h-4 w-40 inline-block align-middle" />} ({nftSymbol ? String(nftSymbol) : <Skeleton className="h-4 w-16 inline-block align-middle" />})
+              </CardDescription>
+            </div>
+            <div className="flex items-center gap-2">
+              <Badge variant="outline">Celo Sepolia</Badge>
+              <Badge variant={role !== 'viewer' ? 'secondary' : 'outline'} className="capitalize">{role}</Badge>
+              <Badge variant="outline" className="font-mono">{short(address)}</Badge>
+            </div>
+          </CardHeader>
+          <CardContent className="grid gap-6 md:grid-cols-2">
+            <Card className="order-2 md:order-1">
+              <CardHeader>
+                <CardTitle>Mint Proof-of-Impact</CardTitle>
+                <CardDescription>Owner or authorized minter can mint an NFT</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <Label>Name</Label>
+                  <Input value={name} onChange={(e) => setName(e.target.value)} />
+                </div>
+                <div>
+                  <Label>Description</Label>
+                  <Input value={description} onChange={(e) => setDescription(e.target.value)} />
+                </div>
+                <div>
+                  <Label>Image URL</Label>
+                  <Input value={image} onChange={(e) => setImage(e.target.value)} placeholder="/uploads/... or https://" />
+                </div>
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <span>Your NFT balance: {myBal != null ? String(myBal) : '—'}</span>
+                  <Button size="sm" variant="outline" onClick={fillSample}>Sample</Button>
+                  <Button size="sm" variant="ghost" onClick={clearForm}>Clear</Button>
+                </div>
+                <Button onClick={mint} disabled={!canMint || minting} className="w-full">
+                  {minting ? "Minting..." : "Mint PoI NFT"}
+                </Button>
+                {!address && <div className="text-xs text-muted-foreground">Connect your wallet to mint.</div>}
+                {address && chainId !== CELO_SEPOLIA_ID && (
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span>Wrong network. Switch to Celo Sepolia.</span>
+                    <Button size="sm" variant="outline" onClick={() => switchChain({ chainId: CELO_SEPOLIA_ID })}>Switch</Button>
+                  </div>
+                )}
+                {address && chainId === CELO_SEPOLIA_ID && !canMint && <div className="text-xs text-muted-foreground">Minting requires contract owner or authorized minter.</div>}
+              </CardContent>
+            </Card>
+            <Card className="order-1 md:order-2 overflow-hidden">
+              <CardHeader>
+                <CardTitle>Preview</CardTitle>
+                <CardDescription>Live preview of your metadata</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="rounded-lg border border-border overflow-hidden">
+                  {image ? (
+                    <img src={image} alt={name || 'preview'} className="w-full h-60 object-cover" />
+                  ) : (
+                    <div className="w-full h-60 grid place-items-center text-sm text-muted-foreground">No image</div>
+                  )}
+                  <div className="p-4 space-y-1">
+                    <div className="text-lg font-semibold">{name}</div>
+                    <div className="text-sm text-muted-foreground">{description}</div>
+                    <div className="pt-2 text-xs text-muted-foreground break-words">{contractAddress}</div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </CardContent>
+        </Card>
 
-        <div className="grid gap-6 md:grid-cols-2">
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm mb-1">Name</label>
-              <Input value={name} onChange={(e) => setName(e.target.value)} />
+        <Card>
+          <CardHeader>
+            <CardTitle>Contract info</CardTitle>
+            <CardDescription>On-chain details</CardDescription>
+          </CardHeader>
+          <CardContent className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="p-3 rounded-lg border border-border">
+              <div className="text-xs text-muted-foreground">Contract</div>
+              <div className="text-sm font-mono break-all flex items-center justify-between gap-2">
+                <span>{contractAddress}</span>
+                <Button size="icon" variant="outline" onClick={() => copy(contractAddress)}>⧉</Button>
+              </div>
             </div>
-            <div>
-              <label className="block text-sm mb-1">Description</label>
-              <Input value={description} onChange={(e) => setDescription(e.target.value)} />
+            <div className="p-3 rounded-lg border border-border">
+              <div className="text-xs text-muted-foreground">Owner</div>
+              <div className="text-sm font-mono break-all flex items-center justify-between gap-2">
+                <span>{owner ? String(owner) : '—'}</span>
+                {owner && <Button size="icon" variant="outline" onClick={() => copy(String(owner))}>⧉</Button>}
+              </div>
             </div>
-            <div>
-              <label className="block text-sm mb-1">Image URL</label>
-              <Input value={image} onChange={(e) => setImage(e.target.value)} placeholder="/uploads/.. or https://" />
+            <div className="p-3 rounded-lg border border-border">
+              <div className="text-xs text-muted-foreground">Role</div>
+              <div className="text-sm capitalize">{role}</div>
             </div>
-            <div className="text-sm text-muted-foreground">Your balance: {String(myBal || 0)}</div>
-            <Button onClick={mint} disabled={!canMint || minting}>{minting ? "Minting..." : "Mint PoI NFT"}</Button>
-            {!canMint && <div className="text-xs text-muted-foreground">Minting requires contract owner or authorized minter.</div>}
-          </div>
-          <div className="border rounded-lg p-4">
-            <h2 className="font-semibold mb-2">About</h2>
-            <ul className="list-disc pl-6 text-sm space-y-1">
-              <li>Network: Celo Sepolia</li>
-              <li>Contract: {contractAddress}</li>
-              <li>Owner: {String(owner)}</li>
-              <li>Mint requires authorization</li>
-            </ul>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

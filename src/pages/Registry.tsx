@@ -6,6 +6,10 @@ import { CELO_SEPOLIA_ID } from "@/lib/wallet";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/components/ui/use-toast";
 
 const RegistryPage = () => {
@@ -120,61 +124,94 @@ const RegistryPage = () => {
   return (
     <div className="min-h-screen bg-background md:pl-64">
       <div className="container mx-auto px-4 py-8 space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold mb-2">ImpactRegistry</h1>
-          <p className="text-sm text-muted-foreground">Registry: {registry}</p>
-          <p className="text-sm text-muted-foreground">Owner: {String(owner)}</p>
-          <p className="text-sm text-muted-foreground">NFT: {String(currentNft)}</p>
-          <p className="text-sm text-muted-foreground">Next ID: {String(nextId ?? 0)}</p>
-        </div>
+        <Card className="glass-effect">
+          <CardHeader className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+            <div>
+              <CardTitle className="text-2xl">ImpactRegistry</CardTitle>
+              <CardDescription>On-chain registry for verified impacts</CardDescription>
+            </div>
+            <div className="flex items-center gap-2">
+              <Badge variant="outline">Celo Sepolia</Badge>
+              <Badge variant={isOwner ? 'secondary' : 'outline'}>{isOwner ? 'Owner' : 'Viewer'}</Badge>
+            </div>
+          </CardHeader>
+          <CardContent className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="p-3 rounded-lg border border-border">
+              <div className="text-xs text-muted-foreground">Registry</div>
+              <div className="text-sm font-mono break-all">{registry}</div>
+            </div>
+            <div className="p-3 rounded-lg border border-border">
+              <div className="text-xs text-muted-foreground">Owner</div>
+              <div className="text-sm font-mono break-all">{String(owner)}</div>
+            </div>
+            <div className="p-3 rounded-lg border border-border">
+              <div className="text-xs text-muted-foreground">NFT</div>
+              <div className="text-sm font-mono break-all">{String(currentNft)}</div>
+            </div>
+            <div className="p-3 rounded-lg border border-border">
+              <div className="text-xs text-muted-foreground">Next ID</div>
+              <div className="text-xl font-bold">{String(nextId ?? 0)}</div>
+            </div>
+          </CardContent>
+        </Card>
 
         <div className="grid gap-6 md:grid-cols-2">
-          <div className="space-y-4">
-            <h2 className="font-semibold">Submit Impact</h2>
-            <div>
-              <label className="block text-sm mb-1">Action Type</label>
-              <Input value={actionType} onChange={(e) => setActionType(e.target.value)} />
-            </div>
-            <div>
-              <label className="block text-sm mb-1">Name</label>
-              <Input value={name} onChange={(e) => setName(e.target.value)} />
-            </div>
-            <div>
-              <label className="block text-sm mb-1">Description</label>
-              <Input value={description} onChange={(e) => setDescription(e.target.value)} />
-            </div>
-            <div>
-              <label className="block text-sm mb-1">Image URL</label>
-              <Input value={image} onChange={(e) => setImage(e.target.value)} placeholder="/uploads/... or https://" />
-            </div>
-            <Button onClick={submit} disabled={submitting}>{submitting ? "Submitting..." : "Submit Impact (on-chain)"}</Button>
-          </div>
+          <Card>
+            <CardHeader>
+              <CardTitle>Submit Impact</CardTitle>
+              <CardDescription>Create metadata and submit on-chain</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Label>Action Type</Label>
+                <Input value={actionType} onChange={(e) => setActionType(e.target.value)} />
+              </div>
+              <div>
+                <Label>Name</Label>
+                <Input value={name} onChange={(e) => setName(e.target.value)} />
+              </div>
+              <div>
+                <Label>Description</Label>
+                <Input value={description} onChange={(e) => setDescription(e.target.value)} />
+              </div>
+              <div>
+                <Label>Image URL</Label>
+                <Input value={image} onChange={(e) => setImage(e.target.value)} placeholder="/uploads/... or https://" />
+              </div>
+              <Button onClick={submit} disabled={submitting} className="w-full">{submitting ? "Submitting..." : "Submit Impact"}</Button>
+            </CardContent>
+          </Card>
 
-          <div className="space-y-4">
-            <h2 className="font-semibold">Owner actions</h2>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" onClick={setNftContract}>Set NFT contract → {nft}</Button>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-sm mb-1">Verify Impact ID</label>
-                <Input type="number" value={verifyId} onChange={(e) => setVerifyId(Number(e.target.value))} />
+          <Card>
+            <CardHeader>
+              <CardTitle>Owner actions</CardTitle>
+              <CardDescription>Manage NFT contract and verifications</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center gap-2">
+                <Button variant="outline" onClick={setNftContract}>Set NFT contract → {nft}</Button>
               </div>
-              <div>
-                <label className="block text-sm mb-1">AI Score (0-100)</label>
-                <Input type="number" value={aiScore} min={0} max={100} onChange={(e) => setAiScore(Number(e.target.value))} />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Verify Impact ID</Label>
+                  <Input type="number" value={verifyId} onChange={(e) => setVerifyId(Number(e.target.value))} />
+                </div>
+                <div>
+                  <Label>AI Score (0-100)</Label>
+                  <Input type="number" value={aiScore} min={0} max={100} onChange={(e) => setAiScore(Number(e.target.value))} />
+                </div>
+                <div>
+                  <Label>Reward (wei-like)</Label>
+                  <Input type="number" value={reward} onChange={(e) => setReward(Number(e.target.value))} />
+                </div>
+                <div className="flex items-center justify-between pt-6">
+                  <Label className="text-sm">Mint NFT?</Label>
+                  <Switch checked={mintNFT} onCheckedChange={setMintNFT} />
+                </div>
               </div>
-              <div>
-                <label className="block text-sm mb-1">Reward (wei-like)</label>
-                <Input type="number" value={reward} onChange={(e) => setReward(Number(e.target.value))} />
-              </div>
-              <div>
-                <label className="block text-sm mb-1">Mint NFT?</label>
-                <Input type="checkbox" checked={mintNFT} onChange={(e) => setMintNFT(e.target.checked)} />
-              </div>
-            </div>
-            <Button onClick={verify}>Verify Impact</Button>
-          </div>
+              <Button onClick={verify} className="w-full">Verify Impact</Button>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>

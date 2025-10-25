@@ -6,6 +6,9 @@ import { CELO_SEPOLIA_ID } from "@/lib/wallet";
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
 import { parseUnits, formatUnits } from "viem";
 
@@ -112,60 +115,97 @@ const SponsorPoolPage = () => {
     }
   };
 
+  const totalContribFmt = decimals != null ? formatUnits((totalContrib as bigint) || 0n, Number(decimals)) : String(totalContrib || 0);
+  const myContribFmt = decimals != null ? formatUnits((myContrib as bigint) || 0n, Number(decimals)) : String(myContrib || 0);
+
   return (
     <div className="min-h-screen bg-background md:pl-64">
       <div className="container mx-auto px-4 py-8 space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold mb-2">SponsorPool</h1>
-          <p className="text-sm text-muted-foreground">Pool: {pool}</p>
-          <p className="text-sm text-muted-foreground">Owner: {String(owner)}</p>
-          <p className="text-sm text-muted-foreground">Token: {String(tokenAddress)}</p>
-          <p className="text-sm text-muted-foreground">Total Contributions: {decimals != null ? formatUnits((totalContrib as bigint) || 0n, Number(decimals)) : String(totalContrib || 0)} {String(symbol || "").toString()}</p>
-          <p className="text-sm text-muted-foreground">Your Contributions: {decimals != null ? formatUnits((myContrib as bigint) || 0n, Number(decimals)) : String(myContrib || 0)} {String(symbol || "").toString()}</p>
-        </div>
+        <Card className="glass-effect">
+          <CardHeader className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+            <div>
+              <CardTitle className="text-2xl">SponsorPool</CardTitle>
+              <CardDescription>Fund and distribute rewards to verified impacts</CardDescription>
+            </div>
+            <div className="flex items-center gap-2">
+              <Badge variant="outline">Celo Sepolia</Badge>
+              <Badge variant={isOwner ? 'secondary' : 'outline'}>{isOwner ? 'Owner' : 'Sponsor'}</Badge>
+            </div>
+          </CardHeader>
+          <CardContent className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="p-3 rounded-lg border border-border">
+              <div className="text-xs text-muted-foreground">Pool</div>
+              <div className="text-sm font-mono break-all">{pool}</div>
+            </div>
+            <div className="p-3 rounded-lg border border-border">
+              <div className="text-xs text-muted-foreground">Owner</div>
+              <div className="text-sm font-mono break-all">{String(owner)}</div>
+            </div>
+            <div className="p-3 rounded-lg border border-border">
+              <div className="text-xs text-muted-foreground">Token</div>
+              <div className="text-sm font-mono break-all">{String(tokenAddress)}</div>
+            </div>
+            <div className="p-3 rounded-lg border border-border">
+              <div className="text-xs text-muted-foreground">Totals</div>
+              <div className="text-sm">{totalContribFmt} {String(symbol || '')}</div>
+              <div className="text-xs text-muted-foreground">You: {myContribFmt} {String(symbol || '')}</div>
+            </div>
+          </CardContent>
+        </Card>
 
         <div className="grid gap-6 md:grid-cols-2">
-          <div className="space-y-4">
-            <h2 className="font-semibold">Contribute</h2>
-            <div>
-              <label className="block text-sm mb-1">Amount ({String(symbol || "")})</label>
-              <Input value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="e.g. 10.5" />
-            </div>
-            {needApprove ? (
-              <Button onClick={doApprove}>Approve</Button>
-            ) : (
-              <Button onClick={contribute}>Contribute</Button>
-            )}
-          </div>
-
-          <div className="space-y-4">
-            <h2 className="font-semibold">Owner actions</h2>
-            <div>
-              <label className="block text-sm mb-1">Recipients (comma-separated)</label>
-              <Input value={recipientsCsv} onChange={(e) => setRecipientsCsv(e.target.value)} placeholder="0xabc...,0xdef..." />
-            </div>
-            <div>
-              <label className="block text-sm mb-1">Weights (comma-separated, ints)</label>
-              <Input value={weightsCsv} onChange={(e) => setWeightsCsv(e.target.value)} placeholder="70,30" />
-            </div>
-            <div>
-              <label className="block text-sm mb-1">Total Amount ({String(symbol || "")})</label>
-              <Input value={totalAmount} onChange={(e) => setTotalAmount(e.target.value)} placeholder="100" />
-            </div>
-            <Button onClick={distribute}>Distribute</Button>
-
-            <div className="grid grid-cols-2 gap-3 pt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Contribute</CardTitle>
+              <CardDescription>Approve once, then contribute tokens</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
               <div>
-                <label className="block text-sm mb-1">Withdraw To</label>
-                <Input value={withdrawTo} onChange={(e) => setWithdrawTo(e.target.value)} placeholder="0x..." />
+                <Label>Amount ({String(symbol || '')})</Label>
+                <Input value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="e.g. 10.5" />
+              </div>
+              {needApprove ? (
+                <Button onClick={doApprove} className="w-full">Approve</Button>
+              ) : (
+                <Button onClick={contribute} className="w-full">Contribute</Button>
+              )}
+              <div className="text-xs text-muted-foreground">Allowance required only when increasing contribution amount.</div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Owner actions</CardTitle>
+              <CardDescription>Distribute or withdraw pool funds</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Label>Recipients (comma-separated)</Label>
+                <Input value={recipientsCsv} onChange={(e) => setRecipientsCsv(e.target.value)} placeholder="0xabc...,0xdef..." />
               </div>
               <div>
-                <label className="block text-sm mb-1">Amount ({String(symbol || "")})</label>
-                <Input value={withdrawAmount} onChange={(e) => setWithdrawAmount(e.target.value)} placeholder="5" />
+                <Label>Weights (comma-separated, ints)</Label>
+                <Input value={weightsCsv} onChange={(e) => setWeightsCsv(e.target.value)} placeholder="70,30" />
               </div>
-            </div>
-            <Button variant="outline" onClick={withdraw}>Withdraw</Button>
-          </div>
+              <div>
+                <Label>Total Amount ({String(symbol || '')})</Label>
+                <Input value={totalAmount} onChange={(e) => setTotalAmount(e.target.value)} placeholder="100" />
+              </div>
+              <Button onClick={distribute} className="w-full">Distribute</Button>
+
+              <div className="grid grid-cols-2 gap-3 pt-2">
+                <div>
+                  <Label>Withdraw To</Label>
+                  <Input value={withdrawTo} onChange={(e) => setWithdrawTo(e.target.value)} placeholder="0x..." />
+                </div>
+                <div>
+                  <Label>Amount ({String(symbol || '')})</Label>
+                  <Input value={withdrawAmount} onChange={(e) => setWithdrawAmount(e.target.value)} placeholder="5" />
+                </div>
+              </div>
+              <Button variant="outline" onClick={withdraw} className="w-full">Withdraw</Button>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>
