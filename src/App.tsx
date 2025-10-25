@@ -2,6 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import NFT from "@/pages/NFT";
 import Registry from "@/pages/Registry";
+import SponsorPool from "@/pages/SponsorPool";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
@@ -33,6 +34,7 @@ const App = () => (
           <Route path="/challenges" element={<Challenges />} />
           <Route path="/metrics" element={<Metrics />} />
             <Route path="/registry" element={<Registry />} />
+            <Route path="/pool" element={<SponsorPool />} />
           <Route path="/nft" element={<NFT />} />
           <Route path="*" element={<NotFound />} />
         </Routes>

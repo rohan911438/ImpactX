@@ -126,6 +126,17 @@ Registry demo
 	- Submit an impact on-chain: creates token metadata via backend first, then calls submitImpact(actionType, metadataURI)
 	- If you’re the contract owner, you can set the NFT contract and call verifyImpact(id, aiScore, reward, mintNFT)
 
+	SponsorPool demo
+
+	- Visit http://localhost:8080/pool to:
+		- See pool info (owner, token address, totalContributions)
+		- Contribute tokens:
+			1) Approve the SponsorPool to spend your tokens
+			2) Click Contribute to call contribute(amount)
+		- If you’re the owner:
+			- Distribute: enter recipients, weights, and totalAmount to call distribute
+			- Withdraw: move remaining tokens to a target address
+
 ## Architecture
 
 - Frontend: Vite + React + TypeScript, Tailwind + shadcn‑ui, wagmi/viem
