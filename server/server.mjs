@@ -8,6 +8,16 @@ import { Low } from 'lowdb';
 import { JSONFile } from 'lowdb/node';
 import { randomUUID } from 'node:crypto';
 import { recoverTypedDataAddress } from 'viem';
+import { scoreImpactWithGemini, heuristicScore, analyzeImageAuthenticity, moderatePost } from './ai.mjs';
+
+// Moderation config
+const MOD_AI_THRESHOLD = (() => {
+  const v = Number(process.env.MODERATION_AI_THRESHOLD);
+  return Number.isFinite(v) && v > 0 && v < 1 ? v : 0.5;
+})();
+const MOD_REQUIRE_HUMAN = String(process.env.MODERATION_REQUIRE_HUMAN || '').toLowerCase() === 'true';
+const MOD_AUTO_VERIFY = String(process.env.MODERATION_AUTO_VERIFY || '').toLowerCase() === 'true';
+const MOD_ALTERNATE = String(process.env.MODERATION_ALTERNATE || '').toLowerCase() === 'true';
 
 // Paths
 const __filename = fileURLToPath(import.meta.url);
@@ -34,6 +44,8 @@ db.data.challenges ||= [];
 db.data.attestations ||= [];
 db.data.pools ||= [];
 db.data.nftMetadata ||= [];
+// Dev/testing toggle for alternating approve/reject on unflagged items
+if (typeof db.data.devAltNext !== 'boolean') db.data.devAltNext = true;
 await db.write();
 
 // --- Demo seeding utilities ---
@@ -209,16 +221,30 @@ app.post('/api/impacts', upload.single('photo'), async (req, res) => {
   if (!req.file || !actionType) {
     return res.status(400).json({ error: 'Missing file or actionType' });
   }
+
+  // Run moderation pipeline softly (do NOT block upload; we will handle in async verify step)
+  let preMod = null;
+  const imagePath = `/uploads/${req.file.filename}`;
+  try {
+    const text = `${actionType}\n\n${description}`.trim();
+    preMod = await moderatePost({ text, image: imagePath });
+  } catch (e) {
+    console.warn('Moderation precheck error (soft):', e);
+  }
+
   const record = {
     id: randomUUID(),
     walletAddress,
     actionType,
     description,
-    image: `/uploads/${req.file.filename}`,
+    image: imagePath,
     status: 'pending',
     aiScore: null,
     reward: null,
     nftMinted: false,
+    aiPhotoFlag: Boolean(preMod?.image && typeof preMod.image.aiGeneratedProbability === 'number' && preMod.image.aiGeneratedProbability >= MOD_AI_THRESHOLD),
+    aiPhotoProb: preMod?.image?.aiGeneratedProbability ?? null,
+    moderation: preMod || null,
     createdAt: Date.now(),
     referralCode: referralCode || null,
   };
@@ -238,20 +264,87 @@ app.post('/api/impacts', upload.single('photo'), async (req, res) => {
 
   // Simulate async AI verification
   setTimeout(async () => {
+    // If human review required or auto-verify disabled, skip auto-verify and keep pending
+    if (MOD_REQUIRE_HUMAN || !MOD_AUTO_VERIFY) return;
     await db.read();
-    const score = Math.floor(Math.random() * 15) + 85; // 85-99
-    const reward = (Math.random() * 20 + 10).toFixed(2);
+    const imagePath = `/uploads/${req.file.filename}`;
+    let flagged = false; let prob = null; let score = null; let reward = null; let mod = null;
+    try {
+      mod = await moderatePost({ text: `${actionType}\n\n${description}`, image: imagePath });
+      const photo = mod?.image;
+      prob = photo && typeof photo.aiGeneratedProbability === 'number' ? photo.aiGeneratedProbability : null;
+      // Only treat as flagged based on photo probability against threshold
+      flagged = Boolean(prob != null && prob >= MOD_AI_THRESHOLD);
+    } catch {}
+    // If photo looks AI-generated or moderation not clearly approve, reject; otherwise auto-verify only when model available
     const impact = db.data.impacts.find(i => i.id === record.id);
-    if (impact) {
-      impact.status = 'verified';
-      impact.aiScore = score;
-      impact.reward = reward;
-      impact.nftMinted = true;
-    }
     const ver = db.data.verifications.find(v => v.impactId === record.id);
+    if (impact) {
+      impact.aiPhotoProb = prob;
+      impact.aiPhotoFlag = flagged;
+      if (mod) impact.moderation = mod;
+      if (flagged) {
+        // If image appears AI-generated: do NOT mint, but still allow reduced verification and reduced reward
+        // Score: clamp to <50 (e.g., 30-49)
+        score = Math.floor(Math.random() * 20) + 30; // 30-49
+        // Baseline reward range (what non-AI would have received)
+        const baseReward = Number((Math.random() * 20 + 10).toFixed(2)); // 10-30
+        // Give less than 50% of baseline (e.g., 40%)
+        reward = Number((baseReward * 0.4).toFixed(2));
+        impact.status = 'verified';
+        impact.aiScore = score;
+        impact.reward = reward;
+        impact.nftMinted = false;
+      } else {
+        // Optional alternating mode for testing UI/flows
+        if (MOD_ALTERNATE) {
+          const alt = Boolean(db.data.devAltNext);
+          db.data.devAltNext = !alt;
+          if (alt) {
+            // Approve path
+            score = Math.floor(Math.random() * 15) + 85; // 85-99
+            reward = Number((Math.random() * 20 + 10).toFixed(2));
+            impact.status = 'verified';
+            impact.aiScore = score;
+            impact.reward = reward;
+            impact.nftMinted = true;
+          } else {
+            // Disapprove path
+            impact.status = 'rejected';
+            impact.aiScore = 0;
+            impact.reward = 0;
+            impact.nftMinted = false;
+          }
+        } else {
+          // Only auto-verify when Gemini is available
+          if (process.env.GOOGLE_API_KEY) {
+            score = Math.floor(Math.random() * 15) + 85; // 85-99
+            reward = Number((Math.random() * 20 + 10).toFixed(2));
+            impact.status = 'verified';
+            impact.aiScore = score;
+            impact.reward = reward;
+            impact.nftMinted = true;
+          } else {
+            impact.status = 'pending';
+            impact.aiScore = null;
+            impact.reward = null;
+            impact.nftMinted = false;
+          }
+        }
+      }
+    }
     if (ver) {
-      ver.status = 'verified';
-      ver.aiScore = score;
+      if (flagged) {
+        ver.status = 'verified';
+        ver.aiScore = score;
+      } else if (MOD_ALTERNATE) {
+        const lastAlt = !Boolean(db.data.devAltNext); // it was flipped above
+        ver.status = lastAlt ? 'verified' : 'rejected';
+        ver.aiScore = lastAlt ? score : 0;
+      } else {
+        ver.status = process.env.GOOGLE_API_KEY ? 'verified' : 'pending';
+        ver.aiScore = process.env.GOOGLE_API_KEY ? score : null;
+      }
       ver.timestamp = new Date().toISOString().replace('T', ' ').slice(0, 16);
     }
     // Count referral usage
@@ -503,6 +596,38 @@ app.get('/api/public/metrics', async (_req, res) => {
   });
 });
 
+// ----- AI Verification (Gemini with safe fallback) -----
+app.post('/api/ai/verify', async (req, res) => {
+  const { actionType, description = '', image = '' } = req.body || {};
+  if (!actionType) return res.status(400).json({ error: 'actionType required' });
+  let claim, photo;
+  try {
+    if (process.env.GOOGLE_API_KEY) {
+      claim = await scoreImpactWithGemini({ actionType, description, image });
+    }
+  } catch (e) {
+    console.warn('Gemini claim scoring failed:', e);
+  }
+  try {
+    photo = await analyzeImageAuthenticity({ image });
+  } catch (e) {
+    console.warn('Image authenticity analysis failed:', e);
+  }
+  if (!claim) claim = heuristicScore({ actionType, description });
+  const imageFlag = photo ? photo.aiGeneratedProbability >= MOD_AI_THRESHOLD : false;
+  res.json({
+    model: process.env.GOOGLE_API_KEY ? 'gemini-1.5-flash' : 'heuristic',
+    score: claim.score,
+    reasoning: claim.reasoning,
+    image: {
+      aiGeneratedProbability: photo?.aiGeneratedProbability ?? null,
+      label: photo?.label ?? 'unknown',
+      reasoning: photo?.reasoning ?? 'n/a',
+      flagged: imageFlag,
+    },
+  });
+});
+
 // Profile aggregates
 app.get('/api/profile/:wallet', async (req, res) => {
   const wallet = String(req.params.wallet || '').toLowerCase();
@@ -590,7 +715,83 @@ app.post('/api/dev/seed', async (req, res) => {
   }
 });
 
-const PORT = process.env.PORT || 8787;
-app.listen(PORT, () => {
-  console.log(`API server listening on http://localhost:${PORT}`);
+// Optional: finalize moderation with human review and (optionally) on-chain storage
+app.post('/api/moderation/finalize', async (req, res) => {
+  const { impactId, decision, reviewer = 'unknown', note = '' } = req.body || {};
+  if (!impactId || !decision) return res.status(400).json({ error: 'impactId and decision required' });
+  await db.read();
+  const impact = db.data.impacts.find(i => i.id === impactId);
+  if (!impact) return res.status(404).json({ error: 'not found' });
+  impact.humanReview = { reviewer, decision, note, at: Date.now() };
+  // Apply decision to impact + verification record
+  const ver = db.data.verifications.find(v => v.impactId === impactId);
+  const lower = String(decision).toLowerCase();
+  if (lower === 'approve') {
+    // Respect no-mint rule for AI-flagged
+    const flagged = Boolean(impact.aiPhotoFlag);
+    // If no AI score yet or too low, give a reasonable approved score
+    const newScore = typeof impact.aiScore === 'number' && impact.aiScore >= 50 ? impact.aiScore : Math.floor(Math.random() * 15) + 85; // 85-99
+    const newReward = typeof impact.reward === 'number' && impact.reward > 0 ? impact.reward : Number((Math.random() * 20 + 10).toFixed(2));
+    impact.status = 'verified';
+    impact.aiScore = newScore;
+    impact.reward = newReward;
+    impact.nftMinted = !flagged; // do not mint if AI-flagged
+    if (ver) {
+      ver.status = 'verified';
+      ver.aiScore = newScore;
+      ver.timestamp = new Date().toISOString().replace('T', ' ').slice(0, 16);
+    }
+  } else if (lower === 'reject' || lower === 'rejected' || lower === 'disapprove') {
+    impact.status = 'rejected';
+    impact.aiScore = 0;
+    impact.reward = 0;
+    impact.nftMinted = false;
+    if (ver) {
+      ver.status = 'rejected';
+      ver.aiScore = 0;
+      ver.timestamp = new Date().toISOString().replace('T', ' ').slice(0, 16);
+    }
+  }
+  // TODO: store on-chain if configured (requires contract + key)
+  await db.write();
+  res.json({ ok: true, impact });
 });
+
+// Start server with friendly port selection: try PORT (or 8787) and increment if in use
+async function startServer() {
+  const base = Number(process.env.PORT || 8787);
+  let port = base;
+  const maxAttempts = 10;
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    try {
+      await new Promise((resolve, reject) => {
+        const server = app.listen(port, () => {
+          console.log(`API server listening on http://localhost:${port}`);
+          resolve();
+        });
+        server.on('error', (err) => {
+          if (err && err.code === 'EADDRINUSE') {
+            console.warn(`Port ${port} in use, trying ${port + 1}...`);
+            server.close?.();
+            reject(err);
+          } else {
+            reject(err);
+          }
+        });
+      });
+      // Success
+      return;
+    } catch (e) {
+      if (e && e.code === 'EADDRINUSE') {
+        port += 1;
+        continue;
+      }
+      console.error('Failed to start server:', e);
+      process.exit(1);
+    }
+  }
+  console.error(`Could not find a free port starting from ${base} after ${maxAttempts} attempts.`);
+  process.exit(1);
+}
+
+startServer();

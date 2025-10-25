@@ -1,6 +1,7 @@
 import { Hero } from "@/components/Hero";
 import { HowItWorks } from "@/components/HowItWorks";
 import { UploadProof } from "@/components/UploadProof";
+import { Navigation } from "@/components/Navigation";
 import { ImpactShowcase } from "@/components/ImpactShowcase";
 import { Features } from "@/components/Features";
 import { Stats } from "@/components/Stats";
@@ -31,6 +32,7 @@ const Index = () => {
 
   return (
     <div className="min-h-screen md:pl-64">
+      <Navigation />
       <WalletConnect />
       <Hero onConnectWallet={handleConnectWallet} />
       <Partners />

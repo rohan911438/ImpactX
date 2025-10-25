@@ -4,7 +4,7 @@ import { Wallet, LogOut, Menu } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAccount, useDisconnect, useChainId, useSwitchChain, useBalance, useReadContract } from "wagmi";
-import { CELO_ALFAJORES_ID, CELO_MAINNET_ID } from "@/lib/wallet";
+import { CELO_ALFAJORES_ID, CELO_MAINNET_ID, CELO_SEPOLIA_ID, SEPOLIA_ID } from "@/lib/wallet";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
 interface NavigationProps {
@@ -138,6 +138,8 @@ export const Navigation = ({
                 <SelectContent>
                   <SelectItem value={String(CELO_MAINNET_ID)}>Celo Mainnet</SelectItem>
                   <SelectItem value={String(CELO_ALFAJORES_ID)}>Celo Alfajores</SelectItem>
+                  <SelectItem value={String(CELO_SEPOLIA_ID)}>Celo Sepolia</SelectItem>
+                  <SelectItem value={String(SEPOLIA_ID)}>Sepolia</SelectItem>
                 </SelectContent>
               </Select>
             </div>

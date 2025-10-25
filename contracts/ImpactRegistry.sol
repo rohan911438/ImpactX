@@ -64,6 +64,10 @@ contract ImpactRegistry is Ownable, ReentrancyGuard {
         require(imp.timestamp != 0, "impact not found");
         require(!imp.verified, "already verified");
         require(aiScore <= 100, "aiScore>100");
+        // Guardrail: do not allow minting when the quality score is below 50 (e.g., AI-generated or low confidence)
+        if (mintNFT) {
+            require(aiScore >= 50, "mint disabled for score<50");
+        }
 
         imp.aiScore = aiScore;
         imp.reward = reward;

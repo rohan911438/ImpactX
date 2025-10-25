@@ -1,9 +1,10 @@
-import { useAccount, useChainId, useReadContract, useWriteContract } from "wagmi";
+import { useAccount, useChainId, useReadContract, useWriteContract, useConnect, useSwitchChain } from "wagmi";
 import { impactRegistryAbi } from "@/contracts/impactRegistry.abi";
 import { impactNftAbi } from "@/contracts/impactNft.abi";
 import { CONTRACTS } from "@/contracts/addresses";
 import { CELO_SEPOLIA_ID } from "@/lib/wallet";
 import { useState } from "react";
+import { Navigation } from "@/components/Navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,6 +17,8 @@ const RegistryPage = () => {
   const { address } = useAccount();
   const chainId = useChainId();
   const { toast } = useToast();
+  const { connectors, connectAsync } = useConnect();
+  const { switchChain } = useSwitchChain();
   const [submitting, setSubmitting] = useState(false);
   const [actionType, setActionType] = useState("Tree Planting");
   const [name, setName] = useState("ImpactX PoI");
@@ -25,6 +28,9 @@ const RegistryPage = () => {
   const [aiScore, setAiScore] = useState(95);
   const [reward, setReward] = useState(10);
   const [mintNFT, setMintNFT] = useState(true);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiPhotoFlag, setAiPhotoFlag] = useState(false);
+  const [aiPhotoProb, setAiPhotoProb] = useState<number | null>(null);
 
   const registry = CONTRACTS.celoSepolia.ImpactRegistry as `0x${string}`;
   const nft = CONTRACTS.celoSepolia.ImpactNFT as `0x${string}`;
@@ -51,6 +57,22 @@ const RegistryPage = () => {
   });
 
   const { writeContractAsync } = useWriteContract();
+  const ensureConnectedAndOnSepolia = async () => {
+    try {
+      if (!address) {
+        const mm = connectors.find((c) => c.id === "io.metamask") || connectors.find((c) => c.name.toLowerCase().includes("metamask")) || connectors[0];
+        if (!mm) throw new Error("No wallet connector available");
+        await connectAsync({ connector: mm, chainId: CELO_SEPOLIA_ID });
+      }
+      if (chainId !== CELO_SEPOLIA_ID) {
+        await switchChain({ chainId: CELO_SEPOLIA_ID });
+      }
+    } catch (e) {
+      const msg = typeof e === 'string' ? e : (e && typeof e === 'object' ? ((e as any).shortMessage || (e as any).message || JSON.stringify(e)) : String(e));
+      toast({ title: 'Wallet action needed', description: msg });
+      throw e;
+    }
+  };
 
   const isOwner = Boolean(address) && String(owner).toLowerCase() === String(address).toLowerCase();
 
@@ -66,8 +88,7 @@ const RegistryPage = () => {
   };
 
   const submit = async () => {
-    if (!address) return toast({ title: "Connect wallet" });
-    if (chainId !== CELO_SEPOLIA_ID) return toast({ title: "Switch to Celo Sepolia" });
+    await ensureConnectedAndOnSepolia();
     try {
       setSubmitting(true);
       const uri = await createMetadata();
@@ -80,16 +101,50 @@ const RegistryPage = () => {
       });
       toast({ title: "Submitted", description: String(hash) });
     } catch (e: unknown) {
-      const msg = typeof e === 'string' ? e : (e && typeof e === 'object' && 'message' in e && typeof (e as any).message === 'string') ? (e as any).message : String(e);
+      let msg: string;
+      if (typeof e === 'string') {
+        msg = e;
+      } else if (e && typeof e === 'object') {
+        const err = e as { message?: unknown };
+        msg = typeof err.message === 'string' ? err.message : JSON.stringify(err);
+      } else {
+        msg = String(e);
+      }
       toast({ title: "Submit failed", description: msg });
     } finally {
       setSubmitting(false);
     }
   };
 
+  const getAiScore = async () => {
+    try {
+      setAiLoading(true);
+      const res = await fetch('/api/ai/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ actionType, description, image }),
+      });
+      if (!res.ok) throw new Error('AI verify failed');
+      const data = await res.json();
+      const score = Number(data?.score ?? 0);
+      if (!Number.isNaN(score)) setAiScore(Math.max(0, Math.min(100, Math.round(score))));
+      const flagged = Boolean(data?.image?.flagged);
+      const prob = typeof data?.image?.aiGeneratedProbability === 'number' ? data.image.aiGeneratedProbability : null;
+      setAiPhotoFlag(flagged);
+      setAiPhotoProb(prob);
+      if (flagged) setMintNFT(false);
+      const imgMsg = flagged ? `Image likely AI-generated (${(prob*100).toFixed(0)}%).` : data?.image?.reasoning || '';
+      toast({ title: 'AI analysis complete', description: `${data?.model || 'heuristic'}: ${data?.reasoning || ''} ${imgMsg}`.trim() });
+    } catch (e) {
+      toast({ title: 'AI verify failed', description: String(e) });
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
   const setNftContract = async () => {
     if (!isOwner) return toast({ title: "Owner only" });
-    if (chainId !== CELO_SEPOLIA_ID) return toast({ title: "Switch to Celo Sepolia" });
+    await ensureConnectedAndOnSepolia();
     try {
       const hash = await writeContractAsync({
         abi: impactRegistryAbi,
@@ -106,7 +161,7 @@ const RegistryPage = () => {
 
   const verify = async () => {
     if (!isOwner) return toast({ title: "Owner only" });
-    if (chainId !== CELO_SEPOLIA_ID) return toast({ title: "Switch to Celo Sepolia" });
+    await ensureConnectedAndOnSepolia();
     try {
       const hash = await writeContractAsync({
         abi: impactRegistryAbi,
@@ -123,6 +178,7 @@ const RegistryPage = () => {
 
   return (
     <div className="min-h-screen bg-background md:pl-64">
+      <Navigation />
       <div className="container mx-auto px-4 py-8 space-y-6">
         <Card className="glass-effect">
           <CardHeader className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
@@ -199,6 +255,14 @@ const RegistryPage = () => {
                 <div>
                   <Label>AI Score (0-100)</Label>
                   <Input type="number" value={aiScore} min={0} max={100} onChange={(e) => setAiScore(Number(e.target.value))} />
+                </div>
+                <div className="col-span-2 -mt-2 flex items-center gap-2">
+                  <Button variant="outline" size="sm" onClick={getAiScore} disabled={aiLoading}>{aiLoading ? 'Scoring…' : 'AI suggestion'}</Button>
+                  {aiPhotoProb != null && (
+                    <span className={"text-xs " + (aiPhotoFlag ? 'text-destructive' : 'text-muted-foreground')}>
+                      Image AI prob: {(aiPhotoProb * 100).toFixed(0)}% {aiPhotoFlag ? '— will not mint NFT' : ''}
+                    </span>
+                  )}
                 </div>
                 <div>
                   <Label>Reward (wei-like)</Label>

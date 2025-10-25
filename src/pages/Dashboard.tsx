@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Navigation } from "@/components/Navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,9 +20,10 @@ const Dashboard = () => {
   const chainId = useChainId();
   const { signTypedDataAsync } = useSignTypedData();
   const [isVerifying, setIsVerifying] = useState(false);
-  const [actionType, setActionType] = useState("");
+  const [actionType, setActionType] = useState("Tree Planting");
   const [description, setDescription] = useState("");
   const [file, setFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [myReferral, setMyReferral] = useState<string | null>(null);
   const [appliedReferral, setAppliedReferral] = useState<string | null>(null);
   
@@ -57,14 +58,15 @@ const Dashboard = () => {
 
   // Resolve active wallet address (prefer connected wallet, fallback to mock)
   const activeWallet = useMemo(
-    () => wagmiAccount.address || userData.walletAddress,
-    [wagmiAccount.address, userData.walletAddress]
+    () => wagmiAccount.address || "",
+    [wagmiAccount.address]
   );
 
   // Load impacts from backend (fallback to mock if API unreachable)
   useEffect(() => {
     const load = async () => {
       try {
+        if (!activeWallet) { setImpacts([]); return; }
         const res = await fetch(`/api/impacts?walletAddress=${activeWallet}`);
         if (!res.ok) throw new Error('Failed');
         const data: { impacts?: ApiImpact[] } = await res.json();
@@ -76,6 +78,8 @@ const Dashboard = () => {
           reward: String(i.reward ?? "0.00"),
           nftMinted: Boolean(i.nftMinted),
           image: i.image,
+          // @ts-expect-error backend union
+          status: (i as any).status ?? (i.nftMinted ? 'verified' : 'pending'),
         }));
         setImpacts(mapped);
       } catch {
@@ -147,10 +151,24 @@ const Dashboard = () => {
   };
 
   const handleSubmit = async () => {
-    if (!file || !actionType) {
+    if (!wagmiAccount.address) {
+      toast({ title: 'Connect wallet', description: 'Please connect your wallet before submitting.', variant: 'destructive' });
+      return;
+    }
+    // Fallback: if state doesn't have file yet, try reading the input directly
+    let chosenFile = file;
+    if (!chosenFile && fileInputRef.current?.files && fileInputRef.current.files[0]) {
+      chosenFile = fileInputRef.current.files[0];
+      setFile(chosenFile);
+    }
+
+    if (!chosenFile || !actionType) {
+      const missing: string[] = [];
+      if (!chosenFile) missing.push('photo');
+      if (!actionType) missing.push('action type');
       toast({
-        title: "Missing Information",
-        description: "Please upload a photo and select an action type",
+        title: "Missing information",
+        description: `Please provide: ${missing.join(', ')}`,
         variant: "destructive",
       });
       return;
@@ -159,14 +177,20 @@ const Dashboard = () => {
     setIsVerifying(true);
     try {
       const form = new FormData();
-      form.append('photo', file);
+  form.append('photo', chosenFile);
       form.append('walletAddress', activeWallet);
       form.append('actionType', actionType);
       form.append('description', description);
       const ref = localStorage.getItem('impactx_ref');
       if (ref) form.append('referralCode', ref);
       const res = await fetch('/api/impacts', { method: 'POST', body: form });
-      if (!res.ok) throw new Error('Upload failed');
+      if (!res.ok) {
+        // Try to extract a meaningful error
+        const ct = res.headers.get('content-type') || '';
+        const raw = await (ct.includes('application/json') ? res.json() : res.text());
+        const msg = typeof raw === 'string' ? raw : (raw?.error || raw?.message || JSON.stringify(raw));
+        throw new Error(`Upload failed: ${msg}`);
+      }
       const data = await res.json();
       const i = data.impact;
       const newImpact = {
@@ -177,6 +201,7 @@ const Dashboard = () => {
         reward: i.reward ?? "0.00",
         nftMinted: Boolean(i.nftMinted),
         image: i.image,
+        status: i.status ?? (i.nftMinted ? 'verified' : 'pending'),
       };
       setImpacts([newImpact, ...impacts]);
       toast({ title: "Submitted!", description: "AI verification in progress..." });
@@ -194,6 +219,8 @@ const Dashboard = () => {
               reward: String(j.reward ?? "0.00"),
               nftMinted: Boolean(j.nftMinted),
               image: j.image,
+              // @ts-expect-error backend union
+              status: (j as any).status ?? (j.nftMinted ? 'verified' : 'pending'),
             }));
             setImpacts(mapped);
           }
@@ -242,7 +269,11 @@ const Dashboard = () => {
         {/* Welcome Panel */}
         <div className="mb-8 animate-fade-in">
           <h1 className="text-4xl font-bold mb-2">
-            Welcome back, <span className="gradient-hero bg-clip-text text-transparent">{userData.walletAddress.slice(0, 8)}...</span> 🌍
+            {wagmiAccount.address ? (
+              <>Welcome back, <span className="gradient-hero bg-clip-text text-transparent">{wagmiAccount.address.slice(0, 8)}...</span> 🌍</>
+            ) : (
+              <>Welcome! <span className="text-muted-foreground">Connect your wallet to submit and view your history.</span></>
+            )}
           </h1>
           <p className="text-muted-foreground">Track your impact and continue making a difference</p>
         </div>
@@ -300,11 +331,13 @@ const Dashboard = () => {
                   <Input 
                     id="photo" 
                     type="file" 
-                    accept="image/jpeg,image/png,image/jpg"
+                    accept="image/*"
                     onChange={handleFileChange}
+                    ref={fileInputRef}
                     className="mt-2"
                   />
                   {file && <p className="text-sm text-muted-foreground mt-1">Selected: {file.name}</p>}
+                  {!file && <p className="text-xs text-muted-foreground mt-1">Photo is required</p>}
                 </div>
                 
                 <div>
@@ -370,19 +403,22 @@ const Dashboard = () => {
                             <h4 className="font-semibold">{impact.type}</h4>
                             <p className="text-sm text-muted-foreground">{impact.date}</p>
                           </div>
-                          <Badge variant="secondary" className="bg-primary/20 text-primary">
-                            AI: {impact.score}%
-                          </Badge>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="secondary" className="bg-primary/20 text-primary">AI: {impact.score}%</Badge>
+                            <Badge variant={impact.status === 'verified' ? 'secondary' : impact.status === 'rejected' ? 'destructive' : 'outline'}>
+                              {impact.status || 'pending'}
+                            </Badge>
+                          </div>
                         </div>
                         <div className="flex items-center gap-4 text-sm">
                           <span className="text-accent font-semibold">+{impact.reward} cUSD</span>
-                          {impact.nftMinted && (
+                          {impact.nftMinted && impact.status === 'verified' && (
                             <Badge variant="outline" className="gap-1">
                               <Award className="w-3 h-3" />
                               NFT Minted
                             </Badge>
                           )}
-                          {impact.score >= 0 && (
+                          {impact.status === 'verified' && impact.score >= 0 && (
                             <Button size="sm" variant="outline" onClick={() => handleAttest(impact)}>
                               Create Attestation
                             </Button>
@@ -391,6 +427,9 @@ const Dashboard = () => {
                       </div>
                     </div>
                   ))}
+                  {!impacts.length && (
+                    <div className="text-sm text-muted-foreground">{wagmiAccount.address ? 'No submissions yet.' : 'Connect your wallet to view your history.'}</div>
+                  )}
                 </div>
               </CardContent>
             </Card>
