@@ -106,6 +106,24 @@ npm run dev:server   # API on http://localhost:8787
 npm run dev          # Frontend on http://localhost:8080
 ```
 
+One‑click deploy (SponsorPool)
+
+- The Pool page now includes a "Deploy SponsorPool (backend)" panel to deploy a fresh pool in one step.
+- Backend requirements (set as environment variables before starting the API):
+
+```cmd
+set DEPLOYER_PRIVATE_KEY=0xYOUR_PRIVATE_KEY_HEX
+set CELO_SEPOLIA_RPC_URL=https://your.rpc.endpoint
+# optional: set PORT=8787
+npm run dev:server
+```
+
+- In the UI, paste the ERC‑20 token address (e.g., cUSD test token), and the ownership target (defaults to your connected wallet). Click "Deploy & Save". The backend will:
+	- Compile a minimal, ABI‑compatible SponsorPool
+	- Deploy it using the provided key and RPC for the active chain
+	- Transfer ownership to your target address (if provided)
+	- Save the pool/token for this chain so the UI reads it automatically
+
 Wallet integration
 
 - MetaMask via wagmi (Celo Mainnet/Alfajores; Sepolia-compatible for testing)
@@ -136,6 +154,9 @@ Registry demo
 		- If you’re the owner:
 			- Distribute: enter recipients, weights, and totalAmount to call distribute
 			- Withdraw: move remaining tokens to a target address
+    - Advanced:
+      - Use the Override section to paste a known pool/token for the current chain and Save
+      - Use the Deploy section for a one‑click backend deploy if you have a funded deployer key
 
 ## Architecture
 

@@ -7,7 +7,9 @@ import { fileURLToPath } from 'node:url';
 import { Low } from 'lowdb';
 import { JSONFile } from 'lowdb/node';
 import { randomUUID } from 'node:crypto';
-import { recoverTypedDataAddress } from 'viem';
+import { recoverTypedDataAddress, createPublicClient, createWalletClient, http } from 'viem';
+import { privateKeyToAccount } from 'viem/accounts';
+import solc from 'solc';
 import { scoreImpactWithGemini, heuristicScore, analyzeImageAuthenticity, moderatePost } from './ai.mjs';
 
 // Moderation config
@@ -44,6 +46,9 @@ db.data.challenges ||= [];
 db.data.attestations ||= [];
 db.data.pools ||= [];
 db.data.nftMetadata ||= [];
+// simple config for on-chain addresses per network
+db.data.config ||= { pools: {} };
+db.data.config.pools ||= {};
 // Dev/testing toggle for alternating approve/reject on unflagged items
 if (typeof db.data.devAltNext !== 'boolean') db.data.devAltNext = true;
 await db.write();
@@ -82,6 +87,14 @@ async function seedDemoData({ reset = false, impacts = 24 } = {}) {
   }
 
   const isEmpty = !db.data.impacts?.length && !db.data.verifications?.length;
+    // Seed pool/token config from environment (optional)
+    const isHexAddr = (v) => typeof v === 'string' && /^0x[a-fA-F0-9]{40}$/.test(v);
+    const SEED_CHAIN = Number(process.env.POOL_CHAIN_ID);
+    const SEED_POOL = process.env.POOL_ADDRESS;
+    const SEED_TOKEN = process.env.POOL_TOKEN;
+    if (Number.isFinite(SEED_CHAIN) && isHexAddr(SEED_POOL) && isHexAddr(SEED_TOKEN)) {
+      db.data.config.pools[String(SEED_CHAIN)] = { pool: SEED_POOL, token: SEED_TOKEN };
+    }
   if (!isEmpty && !reset) return; // don't overwrite existing data unless reset
 
   // Seed referrals (owner codes)
@@ -523,6 +536,174 @@ app.post('/api/pools/:id/contribute', async (req, res) => {
   pool.contributions.push({ sponsor, amount: Number(amount) });
   await db.write();
   res.json({ pool });
+});
+
+  // ----- On-chain Pool Config (per-network) -----
+  // GET /api/pools/config?chainId=11142220 -> { chainId, pool, token } or {}
+  app.get('/api/pools/config', async (req, res) => {
+    await db.read();
+    const cid = Number(req.query.chainId);
+    if (!Number.isFinite(cid)) return res.json({});
+    const entry = db.data.config.pools[String(cid)] || null;
+    res.json(entry ? { chainId: cid, ...entry } : {});
+  });
+
+  // POST /api/pools/config { chainId, pool, token }
+  app.post('/api/pools/config', async (req, res) => {
+    const { chainId, pool, token } = req.body || {};
+    const cid = Number(chainId);
+    const isAddr = (v) => typeof v === 'string' && /^0x[a-fA-F0-9]{40}$/.test(v);
+    if (!Number.isFinite(cid) || !isAddr(pool) || !isAddr(token)) {
+      return res.status(400).json({ error: 'invalid params' });
+    }
+    await db.read();
+    db.data.config.pools[String(cid)] = { pool, token };
+    await db.write();
+    res.json({ ok: true, chainId: cid, pool, token });
+  });
+
+// ----- Backend ONE-CLICK DEPLOY: SponsorPool -----
+// Compiles a minimal SponsorPool (ABI-compatible), deploys it, optionally transfers ownership, and saves config.
+// ENV required: DEPLOYER_PRIVATE_KEY (0x...), plus RPC URL for the chain.
+// Supported chains: Celo Sepolia (11142220) via CELO_SEPOLIA_RPC_URL. Add more as needed.
+const RPC_URLS = {
+  11142220: process.env.CELO_SEPOLIA_RPC_URL || process.env.RPC_11142220 || '',
+  11155111: process.env.ETH_SEPOLIA_RPC_URL || process.env.RPC_11155111 || '',
+};
+
+let cachedCompiled = null;
+function compileSponsorPoolMinimal() {
+  if (cachedCompiled) return cachedCompiled;
+  const source = `// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+interface IERC20 {
+    function transfer(address to, uint256 value) external returns (bool);
+    function transferFrom(address from, address to, uint256 value) external returns (bool);
+    function balanceOf(address account) external view returns (uint256);
+}
+
+contract SponsorPool {
+    address public owner;
+    IERC20 public immutable token;
+    uint256 public totalContributions;
+    mapping(address => uint256) public contributions;
+    bool private _locked;
+
+    event Contributed(address indexed from, uint256 amount);
+    event Distributed(uint256 totalAmount, uint256 recipientCount);
+    event Withdrawn(address indexed to, uint256 amount);
+    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
+
+    modifier onlyOwner() { require(msg.sender == owner, "not owner"); _; }
+    modifier nonReentrant() { require(!_locked, "reentrancy"); _locked = true; _; _locked = false; }
+
+    constructor(address token_) {
+        require(token_ != address(0), "invalid token");
+        owner = msg.sender;
+        token = IERC20(token_);
+    }
+
+    function transferOwnership(address newOwner) external onlyOwner {
+        require(newOwner != address(0), "zero owner");
+        emit OwnershipTransferred(owner, newOwner);
+        owner = newOwner;
+    }
+
+    function contribute(uint256 amount) external nonReentrant {
+        require(amount > 0, "amount=0");
+        require(token.transferFrom(msg.sender, address(this), amount), "transferFrom failed");
+        contributions[msg.sender] += amount;
+        totalContributions += amount;
+        emit Contributed(msg.sender, amount);
+    }
+
+    function distribute(address[] calldata recipients, uint256[] calldata weights, uint256 totalAmount) external onlyOwner nonReentrant {
+        require(recipients.length == weights.length, "len mismatch");
+        require(recipients.length > 0, "empty");
+        require(totalAmount > 0, "amount=0");
+        require(token.balanceOf(address(this)) >= totalAmount, "insufficient funds");
+        uint256 sumWeights = 0;
+        for (uint256 i = 0; i < weights.length; i++) { sumWeights += weights[i]; }
+        require(sumWeights > 0, "sumWeights=0");
+        for (uint256 i = 0; i < recipients.length; i++) {
+            require(recipients[i] != address(0), "zero recipient");
+            uint256 share = (totalAmount * weights[i]) / sumWeights;
+            if (share > 0) { require(token.transfer(recipients[i], share), "transfer failed"); }
+        }
+        emit Distributed(totalAmount, recipients.length);
+    }
+
+    function withdraw(address to, uint256 amount) external onlyOwner nonReentrant {
+        require(to != address(0), "zero to");
+        require(token.transfer(to, amount), "transfer failed");
+        emit Withdrawn(to, amount);
+    }
+}`;
+  const input = {
+    language: 'Solidity',
+    sources: { 'SponsorPool.sol': { content: source } },
+    settings: { outputSelection: { '*': { '*': ['abi', 'evm.bytecode'] } } },
+  };
+  const output = JSON.parse(solc.compile(JSON.stringify(input)));
+  const errors = output.errors?.filter((e) => e.severity === 'error');
+  if (errors?.length) {
+    const msg = errors.map((e) => e.formattedMessage || e.message).join('\n');
+    throw new Error(`Solc compile failed:\n${msg}`);
+  }
+  const contractName = 'SponsorPool';
+  const contractOut = output.contracts['SponsorPool.sol'][contractName];
+  const abi = contractOut.abi;
+  const bytecode = `0x${contractOut.evm.bytecode.object}`;
+  cachedCompiled = { abi, bytecode };
+  return cachedCompiled;
+}
+
+// POST /api/pools/deploy { chainId, token, newOwner? }
+app.post('/api/pools/deploy', async (req, res) => {
+  try {
+    const { chainId, token, newOwner } = req.body || {};
+    const cid = Number(chainId);
+    const isAddr = (v) => typeof v === 'string' && /^0x[a-fA-F0-9]{40}$/.test(v);
+    if (!Number.isFinite(cid)) return res.status(400).json({ error: 'invalid chainId' });
+    if (!isAddr(token)) return res.status(400).json({ error: 'invalid token address' });
+    const rpcUrl = RPC_URLS[cid];
+    if (!rpcUrl) return res.status(400).json({ error: `RPC URL not configured for chainId ${cid}` });
+    const pk = process.env.DEPLOYER_PRIVATE_KEY;
+    if (!pk || !/^0x[0-9a-fA-F]{64}$/.test(pk)) return res.status(400).json({ error: 'DEPLOYER_PRIVATE_KEY missing or invalid' });
+
+    const account = privateKeyToAccount(pk);
+    const publicClient = createPublicClient({ transport: http(rpcUrl) });
+    const walletClient = createWalletClient({ account, transport: http(rpcUrl) });
+
+    const { abi, bytecode } = compileSponsorPoolMinimal();
+
+    // Deploy with constructor arg (token)
+    const hash = await walletClient.deployContract({ abi, bytecode, args: [token] });
+    const receipt = await publicClient.waitForTransactionReceipt({ hash });
+    const contractAddress = receipt.contractAddress;
+    if (!contractAddress) return res.status(500).json({ error: 'deployment failed: no contract address' });
+
+    let finalOwner = account.address;
+    if (isAddr(newOwner) && newOwner.toLowerCase() !== account.address.toLowerCase()) {
+      try {
+        const tx2 = await walletClient.writeContract({ address: contractAddress, abi, functionName: 'transferOwnership', args: [newOwner] });
+        await publicClient.waitForTransactionReceipt({ hash: tx2 });
+        finalOwner = newOwner;
+      } catch (e) {
+        console.warn('Ownership transfer failed (continuing):', e);
+      }
+    }
+
+    // Save config
+    await db.read();
+    db.data.config.pools[String(cid)] = { pool: contractAddress, token };
+    await db.write();
+
+    res.status(201).json({ ok: true, chainId: cid, pool: contractAddress, token, owner: finalOwner, txHash: hash });
+  } catch (e) {
+    res.status(500).json({ error: String(e?.message || e) });
+  }
 });
 
 app.post('/api/pools/:id/distribute', async (req, res) => {
