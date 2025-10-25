@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Navigation } from "@/components/Navigation";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, BarChart, Bar } from 'recharts';
+import { Button } from "@/components/ui/button";
 
 type PublicMetrics = {
   totals: { verifiedActions: number; uniqueWallets: number; totalRewards: number };
@@ -13,18 +14,42 @@ type PublicMetrics = {
 const Metrics = () => {
   const [data, setData] = useState<PublicMetrics | null>(null);
   const [loading, setLoading] = useState(true);
+  const isEmpty = useMemo(() => {
+    if (!data) return false;
+    return data.totals.verifiedActions === 0 && data.totals.uniqueWallets === 0 && data.weeklyTimeSeries.length === 0;
+  }, [data]);
 
   useEffect(() => {
     (async () => {
       try {
         const res = await fetch('/api/public/metrics');
-  const d: PublicMetrics = await res.json();
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const d: PublicMetrics = await res.json();
         setData(d);
+      } catch (e) {
+        // Fallback to empty metrics so the page still renders
+        console.error('Failed to load metrics:', e);
+        setData({
+          totals: { verifiedActions: 0, uniqueWallets: 0, totalRewards: 0 },
+          weeklyTimeSeries: [],
+          byAction: [],
+          topWallets: [],
+        });
       } finally {
         setLoading(false);
       }
     })();
   }, []);
+
+  const reseed = async () => {
+    try {
+      await fetch('/api/dev/seed', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reset: false }) });
+      const res = await fetch('/api/public/metrics');
+      if (res.ok) setData(await res.json());
+    } catch (e) {
+      console.error('Reseed failed', e);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -33,6 +58,11 @@ const Metrics = () => {
         <div className="mb-8">
           <h1 className="text-4xl font-bold">Public Metrics</h1>
           <p className="text-muted-foreground">Network-wide, privacy-safe numbers updated live</p>
+          {!loading && isEmpty && (
+            <div className="mt-4">
+              <Button size="sm" variant="outline" onClick={reseed}>Generate demo metrics</Button>
+            </div>
+          )}
         </div>
 
         {loading ? (
@@ -122,9 +152,7 @@ const Metrics = () => {
               </CardContent>
             </Card>
           </div>
-        ) : (
-          <div className="text-destructive">Failed to load metrics.</div>
-        )}
+        ) : null}
       </div>
     </div>
   );

@@ -16,9 +16,10 @@ export const WalletConnect = () => {
     connectors.find((c) => c.id === "injected");
   const walletConnectConnector = connectors.find((c) => c.id === "walletConnect" );
 
-  const isMetaMaskInstalled = typeof window !== "undefined" &&
-    // @ts-expect-error - ethereum injected by MetaMask
-    typeof window.ethereum !== "undefined" && window.ethereum?.isMetaMask;
+  const isMetaMaskInstalled = typeof window !== "undefined" && (() => {
+    const w = window as unknown as { ethereum?: { isMetaMask?: boolean } };
+    return typeof w.ethereum !== "undefined" && Boolean(w.ethereum?.isMetaMask);
+  })();
 
   const shortAddress = address
     ? `${address.slice(0, 6)}...${address.slice(-4)}`

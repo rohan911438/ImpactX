@@ -36,6 +36,143 @@ db.data.pools ||= [];
 db.data.nftMetadata ||= [];
 await db.write();
 
+// --- Demo seeding utilities ---
+const demoWallets = [
+  '0x12A3456789aBCdEf0123456789abCDef01234567',
+  '0x89bCDEF0123456789abCDef0123456789AbcDef0',
+  '0xFEdCBA9876543210fEdcBa9876543210FEDcBa98',
+  '0x00112233445566778899AaBbCcDdeEfF00112233',
+  '0x77aa88BB99cc00DDEe11223344556677889900aa',
+];
+
+const demoActions = [
+  'Tree Planting',
+  'Beach Cleanup',
+  'Recycling',
+  'Teaching',
+  'Solar Installation',
+];
+
+const formatTimestamp = (ts) => new Date(ts).toISOString().replace('T', ' ').slice(0, 16);
+
+async function seedDemoData({ reset = false, impacts = 24 } = {}) {
+  await db.read();
+
+  if (reset) {
+    db.data.impacts = [];
+    db.data.verifications = [];
+    db.data.referrals = [];
+    db.data.challenges = [];
+    db.data.attestations = [];
+    db.data.pools = [];
+    db.data.nftMetadata = [];
+  }
+
+  const isEmpty = !db.data.impacts?.length && !db.data.verifications?.length;
+  if (!isEmpty && !reset) return; // don't overwrite existing data unless reset
+
+  // Seed referrals (owner codes)
+  if (!db.data.referrals?.length) {
+    for (const w of demoWallets.slice(0, 3)) {
+      db.data.referrals.push({ code: Math.random().toString(36).slice(2, 8).toUpperCase(), ownerWallet: w, createdAt: Date.now(), uses: 0 });
+    }
+  }
+
+  // Seed impacts across the last 6 weeks with varied actions and scores
+  const now = Date.now();
+  for (let i = 0; i < impacts; i++) {
+    const walletAddress = demoWallets[i % demoWallets.length];
+    const actionType = demoActions[i % demoActions.length];
+    const createdAt = now - (i * 36 + (i % 7) * 6) * 60 * 60 * 1000; // spread over ~6 weeks
+    const id = randomUUID();
+    const score = Math.floor(75 + Math.random() * 25); // 75-99
+    const reward = Number((10 + Math.random() * 25).toFixed(2));
+    const verified = i % 6 !== 0; // roughly ~5/6 verified
+    const image = `https://picsum.photos/seed/impact-${i}/640/360`;
+
+    db.data.impacts.push({
+      id,
+      walletAddress,
+      actionType,
+      description: `${actionType} demo impact #${i + 1}`,
+      image,
+      status: verified ? 'verified' : 'pending',
+      aiScore: verified ? score : null,
+      reward: verified ? reward : null,
+      nftMinted: verified,
+      createdAt,
+      referralCode: db.data.referrals[0]?.code || null,
+    });
+    db.data.verifications.push({
+      id: `VR-${Math.floor(1000 + Math.random() * 9000)}`,
+      wallet: `${walletAddress.slice(0, 8)}...${walletAddress.slice(-6)}`,
+      action: actionType,
+      status: verified ? 'verified' : 'pending',
+      aiScore: verified ? score : null,
+      timestamp: formatTimestamp(createdAt + 60 * 60 * 1000),
+      ipfsHash: 'QmPlaceholder',
+      impactId: id,
+    });
+  }
+
+  // Seed one sponsor pool covering last 30 days with a basic distribution
+  if (!db.data.pools?.length) {
+    const startAt = now - 30 * 24 * 60 * 60 * 1000;
+    const endAt = now;
+    const pool = {
+      id: randomUUID(),
+      name: 'Earth Month Pool',
+      startAt,
+      endAt,
+      budget: 1000,
+      contributions: [
+        { sponsor: demoWallets[0], amount: 250 },
+        { sponsor: demoWallets[1], amount: 150 },
+      ],
+      distributions: [],
+      createdAt: now,
+    };
+    db.data.pools.push(pool);
+
+    // Auto compute one distribution if there are verified impacts in the window
+    const impactsInWindow = db.data.impacts.filter((i) => i.status === 'verified' && i.createdAt >= startAt && i.createdAt <= endAt);
+    if (impactsInWindow.length) {
+      const totalWeight = impactsInWindow.reduce((s, i) => s + Number(i.aiScore || 0), 0) || impactsInWindow.length;
+      const budget = pool.budget + pool.contributions.reduce((s, c) => s + Number(c.amount || 0), 0);
+      const allocations = impactsInWindow.map((i) => {
+        const w = Number(i.aiScore || 0) || 1;
+        const amount = (w / totalWeight) * budget;
+        return { walletAddress: i.walletAddress, impactId: i.id, amount: Number(amount.toFixed(2)) };
+      });
+      const totalDistributed = Number(allocations.reduce((s, a) => s + a.amount, 0).toFixed(2));
+      pool.distributions.push({ at: now, totalDistributed, allocations });
+    }
+  }
+
+  // A few NFT metadata samples
+  if (!db.data.nftMetadata?.length) {
+    for (let i = 0; i < 3; i++) {
+      db.data.nftMetadata.push({
+        id: randomUUID(),
+        name: `ImpactX PoI #${i + 1}`,
+        description: 'Proof of Impact demo metadata',
+        image: `https://picsum.photos/seed/meta-${i}/512/512`,
+        attributes: [
+          { trait_type: 'app', value: 'ImpactX' },
+          { trait_type: 'network', value: 'Celo Sepolia' },
+        ],
+        createdAt: now - i * 1000,
+      });
+    }
+  }
+
+  // Persist
+  await db.write();
+}
+
+// Auto-seed on first run (no data)
+await seedDemoData({ reset: false });
+
 // Multer storage
 const storage = multer.diskStorage({
   destination: (_, __, cb) => cb(null, UPLOADS_DIR),
@@ -429,6 +566,27 @@ app.get('/api/referral/:code', async (req, res) => {
   const ref = db.data.referrals.find(r => r.code === code);
   if (!ref) return res.status(404).json({ error: 'not found' });
   res.json({ referral: ref });
+});
+
+// Dev: reseed demo data (use carefully; resets data when reset=true)
+app.post('/api/dev/seed', async (req, res) => {
+  const { reset = false, impacts = 24 } = req.body || {};
+  try {
+    await seedDemoData({ reset, impacts: Number(impacts) || 24 });
+    await db.read();
+    res.json({
+      ok: true,
+      counts: {
+        impacts: db.data.impacts.length,
+        verifications: db.data.verifications.length,
+        referrals: db.data.referrals.length,
+        pools: db.data.pools.length,
+        nftMetadata: db.data.nftMetadata.length,
+      },
+    });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e) });
+  }
 });
 
 const PORT = process.env.PORT || 8787;
