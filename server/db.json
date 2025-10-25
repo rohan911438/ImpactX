@@ -920,6 +920,23 @@
   ],
   "nftMetadata": [
     {
+      "id": "008b2b9a-0120-4fbd-92c6-59af93225831",
+      "name": "ImpactX PoI",
+      "description": "Proof-of-Impact NFT minted via ImpactX",
+      "image": "https://picsum.photos/seed/impact-908/640/360",
+      "attributes": [
+        {
+          "trait_type": "app",
+          "value": "ImpactX"
+        },
+        {
+          "trait_type": "network",
+          "value": "Celo Sepolia"
+        }
+      ],
+      "createdAt": 1761432964899
+    },
+    {
       "id": "fbc93d8d-3048-40f4-ad8d-ed30e53a2baf",
       "name": "ImpactX PoI",
       "description": "Verified impact via ImpactRegistry",
