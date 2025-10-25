@@ -119,6 +119,13 @@ NFT demo
 
 - Visit http://localhost:8080/nft to view ImpactNFT info and, if your wallet is the contract owner or an authorized minter, mint a PoI NFT using backend-generated metadata (served from /api/nft/metadata/:id).
 
+Registry demo
+
+- Visit http://localhost:8080/registry to:
+	- View ImpactRegistry status (owner, NFT contract, nextId)
+	- Submit an impact on-chain: creates token metadata via backend first, then calls submitImpact(actionType, metadataURI)
+	- If you’re the contract owner, you can set the NFT contract and call verifyImpact(id, aiScore, reward, mintNFT)
+
 ## Architecture
 
 - Frontend: Vite + React + TypeScript, Tailwind + shadcn‑ui, wagmi/viem
