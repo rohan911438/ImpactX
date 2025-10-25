@@ -1,5 +1,6 @@
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
+import NFT from "@/pages/NFT";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
@@ -30,7 +31,7 @@ const App = () => (
           <Route path="/u/:wallet" element={<Profile />} />
           <Route path="/challenges" element={<Challenges />} />
           <Route path="/metrics" element={<Metrics />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+          <Route path="/nft" element={<NFT />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

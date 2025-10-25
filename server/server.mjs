@@ -23,7 +23,7 @@ fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 
 // Init DB
 const adapter = new JSONFile(DB_FILE);
-const db = new Low(adapter, { impacts: [], verifications: [], referrals: [], challenges: [], attestations: [], pools: [] });
+const db = new Low(adapter, { impacts: [], verifications: [], referrals: [], challenges: [], attestations: [], pools: [], nftMetadata: [] });
 await db.read();
 // Ensure all top-level collections exist even if an older db.json is present
 db.data ||= {};
@@ -33,6 +33,7 @@ db.data.referrals ||= [];
 db.data.challenges ||= [];
 db.data.attestations ||= [];
 db.data.pools ||= [];
+db.data.nftMetadata ||= [];
 await db.write();
 
 // Multer storage
@@ -218,6 +219,36 @@ app.get('/api/attestations/:id', async (req, res) => {
   const att = db.data.attestations.find((a) => a.id === req.params.id);
   if (!att) return res.status(404).json({ error: 'not found' });
   res.json({ attestation: att });
+});
+
+// ----- NFT Metadata (for ImpactNFT tokenURI) -----
+app.post('/api/nft/metadata', async (req, res) => {
+  const { name = 'ImpactX PoI', description = '', image = '' } = req.body || {};
+  const id = randomUUID();
+  const meta = {
+    id,
+    name,
+    description,
+    image,
+    attributes: [
+      { trait_type: 'app', value: 'ImpactX' },
+      { trait_type: 'network', value: 'Celo Sepolia' },
+    ],
+    createdAt: Date.now(),
+  };
+  await db.read();
+  db.data.nftMetadata.unshift(meta);
+  await db.write();
+  res.status(201).json({ id, url: `/api/nft/metadata/${id}` });
+});
+
+app.get('/api/nft/metadata/:id', async (req, res) => {
+  await db.read();
+  const meta = db.data.nftMetadata.find((m) => m.id === req.params.id);
+  if (!meta) return res.status(404).json({ error: 'not found' });
+  res.setHeader('Content-Type', 'application/json');
+  // Return standard ERC721 metadata JSON
+  res.send(JSON.stringify({ name: meta.name, description: meta.description, image: meta.image, attributes: meta.attributes }));
 });
 
 // ----- Sponsor Pools (off-chain MVP) -----

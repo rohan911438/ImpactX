@@ -115,6 +115,10 @@ Wallet integration
 echo VITE_WALLETCONNECT_PROJECT_ID=your_project_id_here> .env
 ```
 
+NFT demo
+
+- Visit http://localhost:8080/nft to view ImpactNFT info and, if your wallet is the contract owner or an authorized minter, mint a PoI NFT using backend-generated metadata (served from /api/nft/metadata/:id).
+
 ## Architecture
 
 - Frontend: Vite + React + TypeScript, Tailwind + shadcn‑ui, wagmi/viem
