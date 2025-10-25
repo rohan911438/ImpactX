@@ -22,6 +22,13 @@ Recorded deployments for quick reference.
    - Constructor Args: `name = "Impact NFT"`, `symbol = "IMPACT"`
    - Notes: The Solidity source includes `// SPDX-License-Identifier: MIT`.
 
+   - ImpactRegistry: `0xD4fcbA9301d11DF04F5bA3361D5962b15D761705`
+    - Tx Hash: `0x3019ea4c8965521c9ba7d736732032b1b5b1c0029a11f3eeb293b407d250abed`
+    - Block: `8100868`
+    - Deployer: `0x8b550Ff0BA4F55f070cafA161E44e84AbeDbBc56`
+    - Verification: ✅ Sourcify verified — https://repo.sourcify.dev/11142220/0xD4fcbA9301d11DF04F5bA3361D5962b15D761705/
+    - Notes: Emits `OwnershipTransferred` to the deployer on creation. Use `setNFTContract(<ImpactNFT>)` then authorize in `ImpactNFT.setMinter(<ImpactRegistry>, true)`.
+
 ## Recommended network tokens
 - Celo Mainnet cUSD: `0x765DE816845861e75A25fCA122bb6898B8B1282a`
 - Celo Alfajores cUSD (testnet): `0x874069Fa1Eb16D44d622F2e0Ca25eeA172369bC1`

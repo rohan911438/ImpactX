@@ -94,6 +94,23 @@ Useful checks (optional)
 
 If you need direct explorer links, open CeloScan and paste the address and tx hash above (select the Celo Sepolia network).
 
+### Additional deployed contract
+
+- Contract name: ImpactRegistry
+- Network: Celo Sepolia Testnet
+- Contract address: `0xD4fcbA9301d11DF04F5bA3361D5962b15D761705`
+- Verification: ✅ Sourcify verified — https://repo.sourcify.dev/11142220/0xD4fcbA9301d11DF04F5bA3361D5962b15D761705/
+- Transaction (creation): `0x3019ea4c8965521c9ba7d736732032b1b5b1c0029a11f3eeb293b407d250abed`
+- Block: `8100868`
+- Owner (after deploy): `0x8b550Ff0BA4F55f070cafA161E44e84AbeDbBc56`
+- Emits `OwnershipTransferred` on creation
+
+Relationship setup
+
+1) Call `ImpactRegistry.setNFTContract(0x179B30bA56985D1e358a1d22BCfC1d1d0595De45)`
+2) Then call `ImpactNFT.setMinter(0xD4fcbA9301d11DF04F5bA3361D5962b15D761705, true)`
+3) Now `ImpactRegistry.verifyImpact(id, aiScore, reward, true)` can mint NFTs to users using the stored `metadataURI`.
+
 ## Backend API (local dev)
 
 This repo now includes a lightweight backend for demoing submissions and AI verification.
