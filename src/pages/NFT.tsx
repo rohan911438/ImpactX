@@ -1,7 +1,6 @@
-import { useAccount, useChainId, useReadContract, useWriteContract, useSwitchChain, useConnect, usePublicClient } from "wagmi";
+import { useAccount, useChainId, useReadContract, useWriteContract, useConnect, usePublicClient } from "wagmi";
 import { impactNftAbi } from "@/contracts/impactNft.abi";
-import { CONTRACTS } from "@/contracts/addresses";
-import { CELO_SEPOLIA_ID } from "@/lib/wallet";
+import { resolveContracts, saveContracts } from "@/contracts/resolve";
 import { useEffect, useState } from "react";
 import { Navigation } from "@/components/Navigation";
 import { Button } from "@/components/ui/button";
@@ -15,37 +14,52 @@ import { useToast } from "@/components/ui/use-toast";
 const NFTPage = () => {
   const { address } = useAccount();
   const chainId = useChainId();
-  const { switchChain } = useSwitchChain();
   const { connectors, connectAsync } = useConnect();
   const { toast } = useToast();
   const [minting, setMinting] = useState(false);
   const [name, setName] = useState("ImpactX PoI");
   const [description, setDescription] = useState("Proof-of-Impact NFT minted via ImpactX");
   const [image, setImage] = useState("/uploads/sample.jpg");
-  const publicClient = usePublicClient({ chainId: CELO_SEPOLIA_ID });
+  const publicClient = usePublicClient();
+  
 
-  const contractAddress = CONTRACTS.celoSepolia.ImpactNFT as `0x${string}`;
-  const registryAddress = CONTRACTS.celoSepolia.ImpactRegistry as `0x${string}`;
+  const defaults = resolveContracts(chainId);
+  const defaultNftAddress = (defaults.ImpactNFT || "") as `0x${string}`;
+  const defaultRegistryAddress = (defaults.ImpactRegistry || "") as `0x${string}`;
+
+  // Allow overriding addresses (useful if you authorized a different deployment)
+  const [nftAddressInput, setNftAddressInput] = useState<string>(() => {
+    const c = resolveContracts(chainId);
+    return c.ImpactNFT || defaultNftAddress || "";
+  });
+  const [registryAddressInput, setRegistryAddressInput] = useState<string>(() => {
+    const c = resolveContracts(chainId);
+    return c.ImpactRegistry || defaultRegistryAddress || "";
+  });
+
+  const isHexAddress = (v: string) => /^0x[a-fA-F0-9]{40}$/.test(v || "");
+  const nftAddress = (isHexAddress(nftAddressInput) ? nftAddressInput : defaultNftAddress) as `0x${string}`;
+  const registryAddress = (isHexAddress(registryAddressInput) ? registryAddressInput : defaultRegistryAddress) as `0x${string}`;
 
   const { data: nftName } = useReadContract({
     abi: impactNftAbi,
-    address: contractAddress,
+    address: nftAddress,
     functionName: "name",
-    chainId: CELO_SEPOLIA_ID,
+    chainId,
   });
 
   const { data: nftSymbol } = useReadContract({
     abi: impactNftAbi,
-    address: contractAddress,
+    address: nftAddress,
     functionName: "symbol",
-    chainId: CELO_SEPOLIA_ID,
+    chainId,
   });
 
   const { data: owner } = useReadContract({
     abi: impactNftAbi,
-    address: contractAddress,
+    address: nftAddress,
     functionName: "owner",
-    chainId: CELO_SEPOLIA_ID,
+    chainId,
   });
 
   // Manual refresh/override states
@@ -57,30 +71,31 @@ const NFTPage = () => {
 
   const { data: isMinter } = useReadContract({
     abi: impactNftAbi,
-    address: contractAddress,
+    address: nftAddress,
     functionName: "isMinter",
     args: [address ?? "0x0000000000000000000000000000000000000000"],
-    chainId: CELO_SEPOLIA_ID,
+    chainId,
     query: { enabled: Boolean(address) },
   });
 
   const { data: registryIsMinter } = useReadContract({
     abi: impactNftAbi,
-    address: contractAddress,
+    address: nftAddress,
     functionName: "isMinter",
     args: [registryAddress],
-    chainId: CELO_SEPOLIA_ID,
+    chainId,
   });
 
   const refreshOnchain = async () => {
     try {
       // Read owner, name, symbol, and minter flags directly via viem client
+      if (!publicClient) throw new Error('No RPC client. Connect a wallet or set a custom RPC.');
       const [o, nm, sy, meMinter, regMinter] = await Promise.all([
-        publicClient!.readContract({ abi: impactNftAbi, address: contractAddress, functionName: 'owner' }) as Promise<string>,
-        publicClient!.readContract({ abi: impactNftAbi, address: contractAddress, functionName: 'name' }) as Promise<string>,
-        publicClient!.readContract({ abi: impactNftAbi, address: contractAddress, functionName: 'symbol' }) as Promise<string>,
-        address ? publicClient!.readContract({ abi: impactNftAbi, address: contractAddress, functionName: 'isMinter', args: [address] }) as Promise<boolean> : Promise.resolve(false),
-        publicClient!.readContract({ abi: impactNftAbi, address: contractAddress, functionName: 'isMinter', args: [registryAddress] }) as Promise<boolean>,
+        publicClient.readContract({ abi: impactNftAbi, address: nftAddress, functionName: 'owner' }) as Promise<string>,
+        publicClient.readContract({ abi: impactNftAbi, address: nftAddress, functionName: 'name' }) as Promise<string>,
+        publicClient.readContract({ abi: impactNftAbi, address: nftAddress, functionName: 'symbol' }) as Promise<string>,
+        address ? publicClient.readContract({ abi: impactNftAbi, address: nftAddress, functionName: 'isMinter', args: [address] }) as Promise<boolean> : Promise.resolve(false),
+        publicClient.readContract({ abi: impactNftAbi, address: nftAddress, functionName: 'isMinter', args: [registryAddress] }) as Promise<boolean>,
       ]);
   setOwnerOverride(o);
   setNameOverride(nm);
@@ -89,8 +104,12 @@ const NFTPage = () => {
   setRegistryIsMinterOverride(!!regMinter);
       toast({ title: 'On-chain state refreshed', description: 'Owner, name, symbol, and minter flags updated.' });
     } catch (e) {
-      const msg = typeof e === 'string' ? e : (e && typeof e === 'object' ? ((e as any).shortMessage || (e as any).message || JSON.stringify(e)) : String(e));
-      toast({ title: 'Refresh failed', description: msg });
+      const raw = typeof e === 'string' ? e : (e && typeof e === 'object' ? ((e as any).shortMessage || (e as any).message || JSON.stringify(e)) : String(e));
+      const lower = String(raw).toLowerCase();
+      const hint = lower.includes('http request failed') || lower.includes('httprequesterror')
+        ? 'RPC unreachable. Check your internet, switch to Celo Sepolia, or set a custom RPC in settings. Then try again.'
+        : undefined;
+      toast({ title: 'Refresh failed', description: hint ? `${raw}\n${hint}` : raw });
     }
   };
 
@@ -99,8 +118,7 @@ const NFTPage = () => {
     try {
       const mm = connectors.find((c) => c.id === "io.metamask") || connectors.find((c) => c.name.toLowerCase().includes("metamask")) || connectors[0];
       if (!mm) throw new Error("No wallet connector available");
-      await connectAsync({ connector: mm, chainId: CELO_SEPOLIA_ID });
-      if (chainId !== CELO_SEPOLIA_ID) await switchChain({ chainId: CELO_SEPOLIA_ID });
+      await connectAsync({ connector: mm });
       await refreshOnchain();
     } catch (e) {
       const msg = typeof e === 'string' ? e : (e && typeof e === 'object' ? ((e as any).shortMessage || (e as any).message || JSON.stringify(e)) : String(e));
@@ -124,25 +142,22 @@ const NFTPage = () => {
 
   const { data: myBal } = useReadContract({
     abi: impactNftAbi,
-    address: contractAddress,
+    address: nftAddress,
     functionName: "balanceOf",
     args: [address ?? "0x0000000000000000000000000000000000000000"],
-    chainId: CELO_SEPOLIA_ID,
+    chainId,
     query: { enabled: Boolean(address) },
   });
 
   const { writeContractAsync } = useWriteContract();
 
-  // Ensure wallet is connected and on Celo Sepolia before writing
-  const ensureConnectedAndOnSepolia = async () => {
+  // Ensure wallet is connected before writing
+  const ensureConnected = async () => {
     try {
       if (!address) {
         const mm = connectors.find((c) => c.id === "io.metamask") || connectors.find((c) => c.name.toLowerCase().includes("metamask")) || connectors[0];
         if (!mm) throw new Error("No wallet connector available");
-        await connectAsync({ connector: mm, chainId: CELO_SEPOLIA_ID });
-      }
-      if (chainId !== CELO_SEPOLIA_ID) {
-        await switchChain({ chainId: CELO_SEPOLIA_ID });
+        await connectAsync({ connector: mm });
       }
     } catch (e) {
       const msg = typeof e === 'string' ? e : (e && typeof e === 'object' ? ((e as any).shortMessage || (e as any).message || JSON.stringify(e)) : String(e));
@@ -151,7 +166,9 @@ const NFTPage = () => {
     }
   };
 
-  const canMint = Boolean(address) && (String(owner).toLowerCase() === String(address).toLowerCase() || Boolean(isMinter));
+  const effectiveOwner = (ownerOverride ?? String(owner ?? '')).toLowerCase();
+  const effectiveIsMinter = (meIsMinterOverride ?? Boolean(isMinter)) as boolean;
+  const canMint = Boolean(address) && (effectiveOwner === String(address||'').toLowerCase() || effectiveIsMinter);
 
   const createMetadata = async () => {
     const res = await fetch("/api/nft/metadata", {
@@ -165,18 +182,20 @@ const NFTPage = () => {
   };
 
   const mint = async () => {
-    // Auto-connect and switch if needed
-    await ensureConnectedAndOnSepolia();
-    if (!canMint) return toast({ title: "Not authorized to mint (owner or minter only)" });
+    // Auto-connect if needed (don’t block on reads; let chain enforce permissions)
+    await ensureConnected();
+    if (!canMint) {
+      toast({ title: "May revert", description: "Not owner/minter. Attempting mint anyway to get exact error from chain." });
+    }
     try {
       setMinting(true);
       const tokenUri = await createMetadata();
       const hash = await writeContractAsync({
         abi: impactNftAbi,
-        address: contractAddress,
+        address: nftAddress,
         functionName: "mintTo",
         args: [address, tokenUri],
-        chainId: CELO_SEPOLIA_ID,
+        chainId,
       });
       toast({ title: "Mint submitted", description: String(hash) });
     } catch (e: unknown) {
@@ -199,14 +218,14 @@ const NFTPage = () => {
   };
 
   const authorizeSelf = async (allowed: boolean) => {
-    await ensureConnectedAndOnSepolia();
+    await ensureConnected();
     try {
       const tx = await writeContractAsync({
         abi: impactNftAbi,
-        address: contractAddress,
+        address: nftAddress,
         functionName: 'setMinter',
         args: [address, allowed],
-        chainId: CELO_SEPOLIA_ID,
+        chainId,
       });
       toast({ title: allowed ? 'Authorized as minter' : 'Revoked minter', description: String(tx) });
       // Refresh state after tx
@@ -221,14 +240,14 @@ const NFTPage = () => {
   };
 
   const authorizeRegistry = async (allowed: boolean) => {
-    await ensureConnectedAndOnSepolia();
+    await ensureConnected();
     try {
       const tx = await writeContractAsync({
         abi: impactNftAbi,
-        address: contractAddress,
+        address: nftAddress,
         functionName: 'setMinter',
         args: [registryAddress, allowed],
-        chainId: CELO_SEPOLIA_ID,
+        chainId,
       });
       toast({ title: allowed ? 'Registry authorized' : 'Registry revoked', description: String(tx) });
       await refreshOnchain();
@@ -242,24 +261,21 @@ const NFTPage = () => {
   };
 
   const authorizeMeAndRegistry = async () => {
-    await ensureConnectedAndOnSepolia();
-    if (String(owner || '').toLowerCase() !== String(address).toLowerCase()) {
-      return toast({ title: "Not contract owner", description: "Only the owner can update minters." });
-    }
+    await ensureConnected();
     try {
       const tx1 = await writeContractAsync({
         abi: impactNftAbi,
-        address: contractAddress,
+        address: nftAddress,
         functionName: 'setMinter',
         args: [address!, true],
-        chainId: CELO_SEPOLIA_ID,
+        chainId,
       });
       const tx2 = await writeContractAsync({
         abi: impactNftAbi,
-        address: contractAddress,
+        address: nftAddress,
         functionName: 'setMinter',
         args: [registryAddress, true],
-        chainId: CELO_SEPOLIA_ID,
+        chainId,
       });
       toast({ title: 'Authorized (you + registry)', description: `Self: ${String(tx1)}\nRegistry: ${String(tx2)}` });
       await refreshOnchain();
@@ -287,6 +303,22 @@ const NFTPage = () => {
       toast({ title: 'Copy failed', description: 'Unable to write to clipboard' });
     }
   };
+  const copyText = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast({ title: 'Copied', description: 'Copied to clipboard' });
+    } catch {
+      toast({ title: 'Copy failed', description: 'Your browser blocked clipboard access.' });
+    }
+  };
+  const pasteTo = async (setter: (v: string) => void) => {
+    try {
+      const txt = await navigator.clipboard.readText();
+      setter(txt.trim());
+    } catch {
+      toast({ title: 'Paste failed', description: 'Grant clipboard permission and try again.' });
+    }
+  };
   const fillSample = () => {
     setName('ImpactX PoI');
     setDescription('Proof-of-Impact NFT minted via ImpactX');
@@ -299,16 +331,13 @@ const NFTPage = () => {
       <Navigation />
       <div className="container mx-auto px-4 py-8 space-y-6">
         <Card className="glass-effect">
-          {(chainId !== CELO_SEPOLIA_ID || !address) && (
+          {(!address) && (
             <div className="p-3 mx-4 mt-4 mb-0 rounded-md border border-amber-400 bg-amber-50 text-amber-800 flex items-center justify-between gap-2">
               <div className="text-xs">
-                {!address ? 'Connect your wallet' : 'Wrong network. Switch to Celo Sepolia.'}
+                Connect your wallet
               </div>
               <div className="flex gap-2">
                 {!address && <Button size="sm" variant="secondary" onClick={connectWallet}>Connect</Button>}
-                {address && chainId !== CELO_SEPOLIA_ID && (
-                  <Button size="sm" variant="outline" onClick={() => switchChain({ chainId: CELO_SEPOLIA_ID })}>Switch</Button>
-                )}
               </div>
             </div>
           )}
@@ -320,7 +349,7 @@ const NFTPage = () => {
               </CardDescription>
             </div>
             <div className="flex items-center gap-2">
-              <Badge variant="outline">Celo Sepolia</Badge>
+              {typeof chainId === 'number' && <Badge variant="outline">Chain {chainId}</Badge>}
               <Badge variant={role !== 'viewer' ? 'secondary' : 'outline'} className="capitalize">{role}</Badge>
               <Badge variant="outline" className="font-mono">{short(address)}</Badge>
             </div>
@@ -353,13 +382,7 @@ const NFTPage = () => {
                   {minting ? "Minting..." : "Mint PoI NFT"}
                 </Button>
                 {!address && <div className="text-xs text-muted-foreground">Connect your wallet to mint.</div>}
-                {address && chainId !== CELO_SEPOLIA_ID && (
-                  <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span>Wrong network. Switch to Celo Sepolia.</span>
-                    <Button size="sm" variant="outline" onClick={() => switchChain({ chainId: CELO_SEPOLIA_ID })}>Switch</Button>
-                  </div>
-                )}
-                {address && chainId === CELO_SEPOLIA_ID && !canMint && (
+                {address && !canMint && (
                   <div className="text-xs text-muted-foreground">
                     Mint will revert unless you are the contract owner or an authorized minter.
                   </div>
@@ -381,7 +404,7 @@ const NFTPage = () => {
                   <div className="p-4 space-y-1">
                     <div className="text-lg font-semibold">{name}</div>
                     <div className="text-sm text-muted-foreground">{description}</div>
-                    <div className="pt-2 text-xs text-muted-foreground break-words">{contractAddress}</div>
+                    <div className="pt-2 text-xs text-muted-foreground break-words">{nftAddress}</div>
                   </div>
                 </div>
               </CardContent>
@@ -398,8 +421,8 @@ const NFTPage = () => {
             <div className="p-3 rounded-lg border border-border">
               <div className="text-xs text-muted-foreground">Contract</div>
               <div className="text-sm font-mono break-all flex items-center justify-between gap-2">
-                <span>{contractAddress}</span>
-                <Button size="icon" variant="outline" onClick={() => copy(contractAddress)}>⧉</Button>
+                <span>{nftAddress}</span>
+                <Button size="icon" variant="outline" onClick={() => copy(nftAddress)}>⧉</Button>
               </div>
             </div>
             <div className="p-3 rounded-lg border border-border">
@@ -435,6 +458,32 @@ const NFTPage = () => {
               </div>
             </div>
             <div className="p-3 rounded-lg border border-border space-y-2">
+              <div className="text-xs text-muted-foreground">Override addresses (advanced)</div>
+              <div className="grid sm:grid-cols-2 gap-2">
+                <div>
+                  <div className="text-xs text-muted-foreground mb-1">NFT contract</div>
+                  <div className="flex gap-2">
+                    <Input value={nftAddressInput} onChange={(e) => setNftAddressInput(e.target.value.trim())} placeholder={defaultNftAddress} />
+                    <Button size="sm" variant="outline" onClick={() => copyText(nftAddressInput)}>Copy</Button>
+                    <Button size="sm" variant="ghost" onClick={() => pasteTo(setNftAddressInput)}>Paste</Button>
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xs text-muted-foreground mb-1">Registry</div>
+                  <div className="flex gap-2">
+                    <Input value={registryAddressInput} onChange={(e) => setRegistryAddressInput(e.target.value.trim())} placeholder={defaultRegistryAddress} />
+                    <Button size="sm" variant="outline" onClick={() => copyText(registryAddressInput)}>Copy</Button>
+                    <Button size="sm" variant="ghost" onClick={() => pasteTo(setRegistryAddressInput)}>Paste</Button>
+                  </div>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Button size="sm" variant="secondary" onClick={() => { if (chainId) saveContracts(chainId, { ImpactNFT: nftAddressInput as `0x${string}`, ImpactRegistry: registryAddressInput as `0x${string}` }); refreshOnchain(); }}>Save & refresh</Button>
+                <Button size="sm" variant="outline" onClick={() => { setNftAddressInput(defaultNftAddress); setRegistryAddressInput(defaultRegistryAddress); if (chainId) saveContracts(chainId, { ImpactNFT: defaultNftAddress, ImpactRegistry: defaultRegistryAddress }); refreshOnchain(); }}>Use defaults</Button>
+              </div>
+              {!isHexAddress(nftAddressInput) && <div className="text-xs text-red-600">Invalid NFT address. Must be 0x-prefixed 40 hex characters.</div>}
+            </div>
+            <div className="p-3 rounded-lg border border-border space-y-2">
               <div className="text-xs text-muted-foreground">Owner actions</div>
               {owner && address && String(owner).toLowerCase() !== String(address).toLowerCase() && (
                 <div className="text-xs text-amber-600 dark:text-amber-500">
@@ -450,12 +499,49 @@ const NFTPage = () => {
                 <Button size="sm" variant="outline" onClick={() => authorizeRegistry(false)}>Revoke Registry</Button>
                 <Button size="sm" variant="ghost" onClick={authorizeMeAndRegistry}>Authorize both</Button>
               </div>
+              {/* Transfer ownership (owner only) */}
+              <TransferOwnershipSection nftAddress={nftAddress} chainId={chainId} onDone={refreshOnchain} />
               {role !== 'owner' && (
                 <div className="text-xs text-muted-foreground">Only the contract owner can execute these. Clicking will prompt and then fail with a clear message if you are not the owner.</div>
               )}
             </div>
           </CardContent>
         </Card>
+      </div>
+    </div>
+  );
+};
+
+// Small inline component to handle transferOwnership
+const TransferOwnershipSection = ({ nftAddress, chainId, onDone }: { nftAddress: `0x${string}`; chainId?: number; onDone?: () => Promise<void> | void }) => {
+  const [to, setTo] = useState("");
+  const { address } = useAccount();
+  const { writeContractAsync } = useWriteContract();
+  const { toast } = useToast();
+
+  const isHexAddress = (v: string) => /^0x[a-fA-F0-9]{40}$/.test(v || "");
+
+  const doTransfer = async () => {
+    if (!isHexAddress(to)) {
+      toast({ title: 'Invalid address', description: 'Enter a valid 0x address' });
+      return;
+    }
+    try {
+      const tx = await writeContractAsync({ abi: impactNftAbi, address: nftAddress, functionName: 'transferOwnership', args: [to as `0x${string}`], chainId });
+      toast({ title: 'Ownership transfer submitted', description: String(tx) });
+      await onDone?.();
+    } catch (e) {
+      const msg = typeof e === 'string' ? e : (e && typeof e === 'object' ? ((e as any).shortMessage || (e as any).message || JSON.stringify(e)) : String(e));
+      toast({ title: 'Transfer failed', description: msg });
+    }
+  };
+
+  return (
+    <div className="space-y-2 mt-2">
+      <div className="text-xs text-muted-foreground">Transfer ownership</div>
+      <div className="flex gap-2">
+        <Input placeholder="0xNewOwner" value={to} onChange={(e) => setTo(e.target.value.trim())} />
+        <Button size="sm" variant="outline" onClick={doTransfer} disabled={!address}>Transfer</Button>
       </div>
     </div>
   );

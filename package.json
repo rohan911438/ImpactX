@@ -4,9 +4,9 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "dev:server": "node ./server/server.mjs",
-    "dev:all": "concurrently \"npm:dev\" \"npm:dev:server\"",
+  "dev": "set VITE_API_PORT=8787 && vite",
+  "dev:server": "set PORT=8787 && node ./server/server.mjs",
+  "dev:all": "concurrently \"npm:dev\" \"npm:dev:server\"",
     "build": "vite build",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",

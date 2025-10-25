@@ -1,4 +1,5 @@
 import { createConfig, http } from "wagmi";
+import { fallback } from "viem";
 import { celo, celoAlfajores, sepolia } from "viem/chains";
 import { celoSepolia } from "./chains";
 import { metaMask } from "wagmi/connectors";
@@ -11,10 +12,22 @@ export const wagmiConfig = createConfig({
   chains: [celo, celoAlfajores, celoSepolia, sepolia],
   connectors,
   transports: {
-    [celo.id]: http(),
-    [celoAlfajores.id]: http(),
-    [celoSepolia.id]: http(),
-    [sepolia.id]: http(),
+    // Prefer explicit, stable RPCs with fallbacks to avoid "HTTP request failed" during reads
+    [celo.id]: fallback([
+      http(import.meta.env.VITE_RPC_CELO || "https://forno.celo.org", { timeout: 10_000 }),
+    ]),
+    [celoAlfajores.id]: fallback([
+      http(import.meta.env.VITE_RPC_ALFAJORES || "https://alfajores-forno.celo-testnet.org", { timeout: 10_000 }),
+    ]),
+    [celoSepolia.id]: fallback([
+      http(import.meta.env.VITE_RPC_CELOSEPOLIA || celoSepolia.rpcUrls.default.http[0], { timeout: 10_000 }),
+    ]),
+    [sepolia.id]: fallback([
+      // Multiple public endpoints to reduce flakiness
+      http(import.meta.env.VITE_RPC_SEPOLIA || "https://rpc.sepolia.org", { timeout: 10_000 }),
+      http("https://ethereum-sepolia-rpc.publicnode.com", { timeout: 10_000 }),
+      http("https://endpoints.omniatech.io/v1/eth/sepolia/public", { timeout: 10_000 }),
+    ]),
   },
 });
 
