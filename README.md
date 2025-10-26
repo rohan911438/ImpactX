@@ -1,14 +1,120 @@
-# ImpactX — Proof-of-Impact on Celo (Hackathon Submission)
+# ImpactX — Celo Hacks Final Submission
 
-Team: BROTHERHOOD · Author: Rohan Kumar
+- Team: BROTHERHOOD
+- Member: Rohan Kumar
+- Project: ImpactX — Turn real‑world actions into verifiable on‑chain impact on Celo
 
-ImpactX lets people submit real-world actions (photos/videos + context), get AI-verified, and receive on-chain Proof‑of‑Impact (PoI) NFTs and token rewards. This repo includes a working React app, a lightweight backend, and three smart contracts deployed on Celo Sepolia.
+ImpactX lets people submit real-world actions (photos/videos + context), get AI‑assisted verification, and receive on‑chain Proof‑of‑Impact (PoI) NFTs and token rewards. This repo includes a working React app, a lightweight Node backend, and smart contracts deployed on Celo Sepolia.
 
-Quick links for judges
+## Submission links
 
-- Deployer wallet (Celo Sepolia): [0x8b550Ff0BA4F55f070cafA161E44e84AbeDbBc56](https://sepolia.celoscan.io/address/0x8b550ff0ba4f55f070cafa161e44e84abedbbc56)
-- ImpactNFT: [0x179B30bA56985D1e358a1d22BCfC1d1d0595De45](https://sepolia.celoscan.io/address/0x179B30bA56985D1e358a1d22BCfC1d1d0595De45) — Verified on CeloScan
-- ImpactRegistry: [0xD4fcbA9301d11DF04F5bA3361D5962b15D761705](https://sepolia.celoscan.io/address/0xD4fcbA9301d11DF04F5bA3361D5962b15D761705) — Sourcify verified
+- Demo video: https://youtu.be/DTZL2FuIZBs?si=1XFWZmIs3GsqpYMx
+- Pitch deck (PPT): ./docs/ImpactX-CeloHacks.pptx
+	- Note: add your deck file at `docs/ImpactX-CeloHacks.pptx` to make this link active in the repo.
+
+## Why ImpactX
+
+Billions of positive actions happen every day but are hard to verify and reward at scale. ImpactX combines AI verification with blockchain attestation to make good deeds discoverable, verifiable, and rewardable — starting with photo/video evidence and evolving toward stronger attestations.
+
+## Key features
+
+- AI‑assisted verification flow for submitted actions (photo/video + description)
+- On‑chain registry of verified impacts, optionally minting PoI NFTs
+- Sponsor pools to fund and distribute rewards to verified contributors
+- Clean React UI (Vite + shadcn/ui), wallet integration via wagmi + viem
+- Minimal backend for uploads, public metrics, and mock verification
+
+## Architecture overview
+
+- Frontend: React (Vite, TypeScript), shadcn/ui, wagmi + viem for Celo
+- Backend: Node/Express (file uploads, metrics, simple AI verify endpoint)
+- Smart contracts: ImpactNFT (ERC721), ImpactRegistry (verification + optional mint), SponsorPool (ERC20 distribution)
+- Optional subgraph scaffold included (not active yet)
+
+## Deployed contracts (Celo Sepolia)
+
+- Deployer wallet: [0x8b550Ff0BA4F55f070cafA161E44e84AbeDbBc56](https://sepolia.celoscan.io/address/0x8b550ff0ba4f55f070cafa161e44e84abedbbc56)
+
+| Contract        | Address                                                                 | Explorer                                                                           |
+|-----------------|-------------------------------------------------------------------------|-------------------------------------------------------------------------------------|
+| ImpactNFT       | `0x179B30bA56985D1e358a1d22BCfC1d1d0595De45`                            | https://sepolia.celoscan.io/address/0x179B30bA56985D1e358a1d22BCfC1d1d0595De45     |
+| ImpactRegistry  | `0xD4fcbA9301d11DF04F5bA3361D5962b15D761705`                            | https://sepolia.celoscan.io/address/0xD4fcbA9301d11DF04F5bA3361D5962b15D761705     |
+| SponsorPool     | `0x2aB068440E8D2006B9bA2f2995932Cb4fC33e21C`                            | https://sepolia.celoscan.io/address/0x2aB068440E8D2006B9bA2f2995932Cb4fC33e21C     |
+
+ABIs:
+
+- ImpactNFT ABI: `src/contracts/impactNft.abi.ts`
+- ImpactRegistry ABI: `src/contracts/impactRegistry.abi.ts`
+- SponsorPool ABI: `src/contracts/sponsorPool.abi.ts`
+- ERC20 minimal ABI (for allowances/balances): `src/contracts/erc20.abi.ts`
+
+Network:
+
+- Chain: Celo Sepolia (id: 11142220)
+- Explorer: https://sepolia.celoscan.io
+
+Recommended tokens (for reference):
+
+- cUSD (Mainnet): `0x765DE816845861e75A25fCA122bb6898B8B1282a`
+- cUSD (Alfajores): `0x874069Fa1Eb16D44d622F2e0Ca25eeA172369bC1`
+
+## Contract summaries
+
+- ImpactNFT.sol — ERC721 for PoI NFTs with per‑token URI and minter role
+- ImpactRegistry.sol — Submit/verify impacts; optionally mints PoI on verification
+- SponsorPool.sol — Collect ERC20 (e.g., cUSD) and distribute by recipient weights
+
+Each contract imports OpenZeppelin v4.9.5 and is Remix‑ready via raw GitHub imports.
+
+## How to run locally
+
+Prereqs: Node 18+, npm
+
+1) Install deps
+
+```
+npm install --legacy-peer-deps
+```
+
+2) Start backend API (port 8787 by default)
+
+```
+npm run start
+```
+
+Alternatively for dev (concurrently runs frontend + backend):
+
+```
+npm run dev:all
+```
+
+3) Start frontend (Vite dev server on 8080)
+
+```
+npm run dev
+```
+
+The frontend proxies `/api` and `/uploads` to the backend. Update `VITE_API_URL` or `VITE_API_PORT` if needed (see `vite.config.ts`).
+
+## File map (high level)
+
+- Frontend app: `src/` (pages: Dashboard, Registry, NFT, SponsorPool, Metrics, etc.)
+- Contracts (Solidity): `contracts/`
+- Contract addresses: `src/contracts/addresses.ts`
+- Backend server: `server/server.mjs` (uploads, verify, public metrics)
+- Scripts: `scripts/` (e.g., check-balance, test-ai-verify)
+- Subgraph scaffold: `subgraph/` (schema + mappings, not deployed)
+
+## Notes and limitations
+
+- AI verification is an MVP with a human‑in‑the‑loop option; do not rely on it as sole truth
+- Contracts are minimal for hackathon use; audit and extend before production
+- Subgraph is a scaffold; update network/address/startBlock when indexing is desired
+
+## License
+
+MIT (for hackathon evaluation; verify license before production use)
+
 - SponsorPool: [0x2aB068440E8D2006B9bA2f2995932Cb4fC33e21C](https://sepolia.celoscan.io/address/0x2aB068440E8D2006B9bA2f2995932Cb4fC33e21C) — Sourcify verified
 
 All three addresses are on Celo Sepolia Testnet (chainId 11142220).
