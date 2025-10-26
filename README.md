@@ -9,8 +9,8 @@ ImpactX lets people submit real-world actions (photos/videos + context), get AIâ
 ## Submission links
 
 - Demo video: https://youtu.be/DTZL2FuIZBs?si=1XFWZmIs3GsqpYMx
-- Pitch deck (PPT): ./docs/ImpactX-CeloHacks.pptx
-	- Note: add your deck file at `docs/ImpactX-CeloHacks.pptx` to make this link active in the repo.
+- Pitch deck: ./cello.pdf
+	- Note: ensure `cello.pdf` is present at the repo root.
 
 ## Why ImpactX
 
