@@ -12,6 +12,15 @@ ImpactX lets people submit real-world actions (photos/videos + context), get AI�
 - Pitch deck: ./cello.pdf
 	- Note: ensure `cello.pdf` is present at the repo root.
 
+## Judge verification
+
+- Deployer wallet (Celo Sepolia): https://sepolia.celoscan.io/address/0x8b550Ff0BA4F55f070cafA161E44e84AbeDbBc56
+- ImpactNFT: https://sepolia.celoscan.io/address/0x179B30bA56985D1e358a1d22BCfC1d1d0595De45
+- ImpactRegistry: https://sepolia.celoscan.io/address/0xD4fcbA9301d11DF04F5bA3361D5962b15D761705
+- SponsorPool: https://sepolia.celoscan.io/address/0x2aB068440E8D2006B9bA2f2995932Cb4fC33e21C
+
+Network: Celo Sepolia (chainId 11142220) — Explorer: https://sepolia.celoscan.io
+
 ## Why ImpactX
 
 Billions of positive actions happen every day but are hard to verify and reward at scale. ImpactX combines AI verification with blockchain attestation to make good deeds discoverable, verifiable, and rewardable — starting with photo/video evidence and evolving toward stronger attestations.

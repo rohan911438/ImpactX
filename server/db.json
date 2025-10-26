@@ -1,6 +1,33 @@
 {
   "impacts": [
     {
+      "id": "3c3f121d-c4c0-44c3-b0a0-9befac8f75b1",
+      "walletAddress": "0x8b550Ff0BA4F55f070cafA161E44e84AbeDbBc56",
+      "actionType": "Tree Planting",
+      "description": "Tree planting",
+      "image": "/uploads/1761456194595-3bdfdamp7bt.png",
+      "status": "pending",
+      "aiScore": null,
+      "reward": null,
+      "nftMinted": false,
+      "aiPhotoFlag": false,
+      "aiPhotoProb": 0.3,
+      "moderation": {
+        "authenticity": "unknown",
+        "relevance": "high",
+        "decision": "approve",
+        "explanation": "Model-assisted moderation Heuristic approve (model uncertain, image not flagged).",
+        "image": {
+          "aiGeneratedProbability": 0.3,
+          "label": "unknown",
+          "reasoning": "Heuristic (no model)"
+        },
+        "model": "heuristic"
+      },
+      "createdAt": 1761456194707,
+      "referralCode": null
+    },
+    {
       "id": "fa05742c-078f-409f-a931-1c82f93d13f6",
       "walletAddress": "0x8b550Ff0BA4F55f070cafA161E44e84AbeDbBc56",
       "actionType": "Tree Planting",
@@ -392,6 +419,16 @@
     }
   ],
   "verifications": [
+    {
+      "id": "VR-8928",
+      "wallet": "0x8b550F...DbBc56",
+      "action": "Tree Planting",
+      "status": "pending",
+      "aiScore": null,
+      "timestamp": "2025-10-26 05:23",
+      "ipfsHash": "QmPlaceholder",
+      "impactId": "3c3f121d-c4c0-44c3-b0a0-9befac8f75b1"
+    },
     {
       "id": "VR-7307",
       "wallet": "0x8b550F...DbBc56",
@@ -919,6 +956,40 @@
     }
   ],
   "nftMetadata": [
+    {
+      "id": "0effcd77-025e-4140-9592-29f2bf59d013",
+      "name": "ImpactX PoI",
+      "description": "Verified impact via ImpactRegistry",
+      "image": "https://picsum.photos/seed/impact-604/640/360",
+      "attributes": [
+        {
+          "trait_type": "app",
+          "value": "ImpactX"
+        },
+        {
+          "trait_type": "network",
+          "value": "Celo Sepolia"
+        }
+      ],
+      "createdAt": 1761456370908
+    },
+    {
+      "id": "7a8eeaaf-d5bd-4135-abaa-06c0f0ea87b7",
+      "name": "ImpactX PoI",
+      "description": "Proof-of-Impact NFT minted via ImpactX",
+      "image": "https://picsum.photos/seed/impact-960/640/360",
+      "attributes": [
+        {
+          "trait_type": "app",
+          "value": "ImpactX"
+        },
+        {
+          "trait_type": "network",
+          "value": "Celo Sepolia"
+        }
+      ],
+      "createdAt": 1761456263477
+    },
     {
       "id": "008b2b9a-0120-4fbd-92c6-59af93225831",
       "name": "ImpactX PoI",
